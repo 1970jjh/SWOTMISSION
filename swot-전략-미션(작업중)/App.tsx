@@ -141,17 +141,17 @@ const getCardStyle = (num: number, isSelectionArea = false, hidden = false) => {
 };
 
 // --- Blue Game Board Component ---
-const BlueGameBoard = ({ 
-    strategy, 
-    onSetChips, 
+const BlueGameBoard = ({
+    strategy,
+    onSetChips,
     readOnly,
     opponentName,
     currentRound,
     blindMode,
     revealedHistory = [],
     onDragStart
-}: { 
-    strategy: RoundStrategy[], 
+}: {
+    strategy: RoundStrategy[],
     onSetChips?: (r: number, d: number) => void,
     readOnly: boolean,
     opponentName?: string,
@@ -160,16 +160,16 @@ const BlueGameBoard = ({
     revealedHistory?: number[],
     onDragStart?: (e: React.PointerEvent, card: number, source: string) => void
 }) => {
-    
+
     return (
-        <div className={`w-full h-full flex flex-col ${opponentName ? 'scale-[0.98] origin-top' : ''}`}>
+        <div className={`w-full h-full flex flex-col`}>
             {opponentName && (
-                <div className="text-center mb-1 flex items-center justify-center gap-2">
-                    <span className="bg-red-600 text-white text-xs px-2 py-0.5 rounded font-bold">VS {opponentName}</span>
+                <div className="text-center py-1 flex items-center justify-center gap-2 shrink-0">
+                    <span className="bg-red-600 text-white text-xs px-3 py-1 rounded-full font-bold shadow-lg">VS {opponentName}</span>
                 </div>
             )}
-            <div className={`flex-1 bg-blue-600/90 backdrop-blur-sm rounded-xl p-1 md:p-3 shadow-2xl border-4 ${opponentName ? 'border-red-400 bg-red-900/40' : 'border-blue-400'} relative flex flex-col overflow-hidden`}>
-                <div className="flex flex-1 gap-1 overflow-x-auto items-stretch z-10 px-1 no-scrollbar">
+            <div className={`flex-1 bg-blue-600/90 backdrop-blur-sm rounded-xl p-2 shadow-2xl border-4 ${opponentName ? 'border-red-400 bg-red-900/40' : 'border-blue-400'} relative flex flex-col overflow-hidden`}>
+                <div className="flex flex-1 gap-0.5 sm:gap-1 overflow-x-auto items-stretch z-10 no-scrollbar">
                     {strategy.map((round, idx) => {
                         const isRoundActive = currentRound === (idx + 1);
                         const isPast = currentRound && (idx + 1) < currentRound;
@@ -177,19 +177,19 @@ const BlueGameBoard = ({
                         const shouldHideNumber = blindMode && !isRevealed;
 
                         return (
-                            <div 
-                                key={round.round} 
-                                className={`relative flex-1 min-w-[34px] md:min-w-[50px] flex flex-col items-center justify-between p-0.5 rounded-lg border 
+                            <div
+                                key={round.round}
+                                className={`relative flex-1 min-w-[28px] sm:min-w-[36px] md:min-w-[50px] flex flex-col items-center justify-between py-1 px-0.5 rounded-lg border
                                     ${isRoundActive ? 'bg-yellow-500/30 border-yellow-400 ring-2 ring-yellow-400 z-20' : 'bg-blue-700/50 border-blue-500/30'}
                                     ${isPast ? 'opacity-50 grayscale' : ''}
                                 `}
                                 data-drop-zone="round"
                                 data-round-index={idx}
                             >
-                                <div className={`font-bold text-[10px] md:text-xs mb-1 ${isRoundActive ? 'text-yellow-300' : 'text-blue-100'}`}>
+                                <div className={`font-bold text-[8px] sm:text-[10px] md:text-xs ${isRoundActive ? 'text-yellow-300' : 'text-blue-100'}`}>
                                     R{round.round}
                                 </div>
-                                
+
                                 {/* Card Slot */}
                                 <div
                                     onPointerDown={(e) => {
@@ -198,7 +198,7 @@ const BlueGameBoard = ({
                                         }
                                     }}
                                     className={`
-                                        w-8 h-12 md:w-12 md:h-16 rounded md:rounded-md flex items-center justify-center shadow-md transition-transform border mb-1 select-none
+                                        w-6 h-9 sm:w-8 sm:h-12 md:w-12 md:h-16 rounded flex items-center justify-center shadow-md transition-transform border select-none
                                         ${getCardStyle(round.card, false, shouldHideNumber)}
                                         ${!readOnly ? 'cursor-grab active:cursor-grabbing' : ''}
                                     `}
@@ -207,7 +207,7 @@ const BlueGameBoard = ({
                                         shouldHideNumber ? (
                                             <span className="text-xs opacity-50">?</span>
                                         ) : (
-                                            <span className="text-lg md:text-2xl font-black">{round.card}</span>
+                                            <span className="text-sm sm:text-lg md:text-2xl font-black">{round.card}</span>
                                         )
                                     ) : (
                                         <span className="text-lg font-bold opacity-20"></span>
@@ -215,22 +215,22 @@ const BlueGameBoard = ({
                                 </div>
 
                                 {/* Chips */}
-                                <div className="flex flex-col items-center justify-end w-full gap-1 mt-auto">
-                                    <div className="relative w-full flex items-center justify-center mb-1">
-                                        <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-600 border border-white/30 shadow-lg flex items-center justify-center z-10">
-                                            <span className="text-[10px] md:text-xs font-black text-black leading-none">{round.chips}</span>
+                                <div className="flex flex-col items-center justify-end w-full gap-0.5 mt-auto">
+                                    <div className="relative w-full flex items-center justify-center">
+                                        <div className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-600 border border-white/30 shadow-lg flex items-center justify-center z-10">
+                                            <span className="text-[8px] sm:text-[10px] md:text-xs font-black text-black leading-none">{round.chips}</span>
                                         </div>
                                     </div>
-                                    
+
                                     {!readOnly && onSetChips && (
                                         <div className="flex items-center gap-0.5 bg-blue-800/60 rounded-full p-0.5 border border-blue-400/30">
-                                            <button 
+                                            <button
                                                 onClick={() => onSetChips(idx, -1)}
                                                 className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-blue-900 text-white flex items-center justify-center text-[10px] font-bold hover:bg-blue-800"
                                             >
                                                 -
                                             </button>
-                                            <button 
+                                            <button
                                                 onClick={() => onSetChips(idx, 1)}
                                                 className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-bold hover:bg-indigo-400"
                                             >
@@ -239,7 +239,7 @@ const BlueGameBoard = ({
                                         </div>
                                     )}
                                     {readOnly && (
-                                        <div className="text-[9px] font-bold text-yellow-300">{round.chips}억</div>
+                                        <div className="text-[7px] sm:text-[9px] font-bold text-yellow-300">{round.chips}억</div>
                                     )}
                                 </div>
                             </div>
@@ -911,7 +911,7 @@ const UserGameView = ({ room, teamId, onUpdate, isAdminMode, onBackToDash }: { r
     const canConfirmSteal = currentStolen >= neededChips;
 
     return (
-        <div className="w-full max-w-7xl mx-auto h-screen flex flex-col p-2 md:p-4 overflow-hidden bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-sm relative touch-none selection:bg-none transition-colors z-10" onPointerUp={handleDrop}>
+        <div className="w-full max-w-7xl mx-auto min-h-screen h-[100dvh] flex flex-col p-2 md:p-4 overflow-hidden bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-sm relative touch-none selection:bg-none transition-colors z-10" onPointerUp={handleDrop}>
             <DragOverlay />
             
             {/* ... (Header, PREPARING view, Game View same as before) ... */}
@@ -973,41 +973,46 @@ const UserGameView = ({ room, teamId, onUpdate, isAdminMode, onBackToDash }: { r
             )}
 
             {(room.status === 'PLAYING' || room.status === 'FINISHED') && opponentTeam && myMatch && (
-                <div className="flex-1 flex flex-col gap-2 min-h-0 relative">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none w-full text-center">
-                         {myMatch.roundStatus === 'DECISION' && <div className="bg-black/70 backdrop-blur-md text-white py-2 px-6 rounded-full inline-block border border-yellow-500 animate-pulse">{isMyTurn ? "당신의 결정 차례입니다!" : `${opponentTeam.name}의 결정을 기다리는 중...`}</div>}
-                         {myMatch.roundStatus === 'SHOWDOWN' && <button onClick={handleShowdown} className="pointer-events-auto bg-red-600 text-white font-black text-xl py-3 px-8 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.6)] animate-bounce border-4 border-white">SHOWDOWN! (카드 오픈)</button>}
+                <div className="flex-1 flex flex-col gap-1 min-h-0 relative overflow-hidden">
+                    {/* Status overlay */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none w-full text-center px-4">
+                         {myMatch.roundStatus === 'DECISION' && <div className="bg-black/70 backdrop-blur-md text-white py-2 px-4 rounded-full inline-block border border-yellow-500 animate-pulse text-sm">{isMyTurn ? "당신의 결정 차례입니다!" : `${opponentTeam.name}의 결정을 기다리는 중...`}</div>}
+                         {myMatch.roundStatus === 'SHOWDOWN' && <button onClick={handleShowdown} className="pointer-events-auto bg-red-600 text-white font-black text-base sm:text-xl py-2 px-6 sm:py-3 sm:px-8 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.6)] animate-bounce border-4 border-white">SHOWDOWN! (카드 오픈)</button>}
                     </div>
 
-                    <div className="flex-1 min-h-0 bg-slate-100/50 dark:bg-slate-900/50 backdrop-blur rounded-xl border border-red-500/20 overflow-hidden relative">
-                         <div className="absolute top-1 right-2 z-20"><span className="text-[10px] bg-slate-900/50 text-white px-2 py-0.5 rounded-full border border-red-500/30">상대 수익: <span className="text-yellow-400 font-bold">{opponentTeam.winnings}억</span></span></div>
+                    {/* Opponent Board */}
+                    <div className="h-[35%] min-h-[120px] bg-slate-100/50 dark:bg-slate-900/50 backdrop-blur rounded-xl border border-red-500/30 overflow-hidden relative">
+                         <div className="absolute top-1 right-2 z-20"><span className="text-[10px] bg-slate-900/70 text-white px-2 py-0.5 rounded-full border border-red-500/30">상대 수익: <span className="text-yellow-400 font-bold">{opponentTeam.winnings}억</span></span></div>
                          <BlueGameBoard strategy={opponentTeam.strategy || []} readOnly={true} opponentName={opponentTeam.name} currentRound={myMatch.currentRound} blindMode={isBlindMode} revealedHistory={revealedRounds} />
                     </div>
-                    
-                    <div className="h-10 flex items-center justify-between px-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur shrink-0 relative border-y border-slate-200 dark:border-slate-800">
-                         <div className="text-gray-500 dark:text-gray-400 text-xs">R{myMatch.currentRound}/10</div>
-                         <div className="flex flex-col items-center">
-                             <div className="text-[10px] text-gray-500">CURRENT POT</div>
-                             <div className="text-yellow-600 dark:text-yellow-400 font-black text-lg">{(team.strategy![myMatch.currentRound-1].chips + opponentTeam.strategy![myMatch.currentRound-1].chips + (myMatch.carryOver||0))}억</div>
+
+                    {/* POT Info - Compact */}
+                    <div className="h-8 flex items-center justify-between px-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur shrink-0 relative border-y border-slate-200 dark:border-slate-700 rounded-lg">
+                         <div className="text-gray-500 dark:text-gray-400 text-[10px] font-medium">R{myMatch.currentRound}/10</div>
+                         <div className="flex items-center gap-2">
+                             <span className="text-[10px] text-gray-500">POT:</span>
+                             <span className="text-yellow-600 dark:text-yellow-400 font-black text-sm">{(team.strategy![myMatch.currentRound-1].chips + opponentTeam.strategy![myMatch.currentRound-1].chips + (myMatch.carryOver||0))}억</span>
                          </div>
-                         <div className="text-gray-500 dark:text-gray-400 text-xs">Carry: {myMatch.carryOver || 0}</div>
+                         <div className="text-gray-500 dark:text-gray-400 text-[10px]">Carry: {myMatch.carryOver || 0}</div>
                     </div>
 
-                    <div className="flex-1 min-h-0 bg-slate-100/50 dark:bg-slate-900/50 backdrop-blur rounded-xl border border-blue-500/20 overflow-hidden relative">
+                    {/* My Board */}
+                    <div className="h-[35%] min-h-[120px] bg-slate-100/50 dark:bg-slate-900/50 backdrop-blur rounded-xl border border-blue-500/30 overflow-hidden relative">
                         <BlueGameBoard strategy={team.strategy || []} readOnly={true} currentRound={myMatch.currentRound} revealedHistory={revealedRounds} />
                     </div>
 
-                    <div className="h-16 bg-white/80 dark:bg-slate-800/80 backdrop-blur shrink-0 flex items-center justify-between px-4 gap-4 border-t border-slate-200 dark:border-slate-700">
-                        <button onClick={handleAIHelp} className={`flex flex-col items-center justify-center w-14 h-full text-[10px] ${aiLoading ? 'opacity-50' : ''} ${(myMatch.aiHelps?.[teamId]||0) >= 3 ? 'grayscale opacity-50' : 'text-cyan-600 dark:text-cyan-400'}`}>
-                            <span className="text-xl">🤖</span>AI 헬프 ({(3 - (myMatch.aiHelps?.[teamId]||0))})
+                    {/* Action Bar */}
+                    <div className="h-14 bg-white/90 dark:bg-slate-800/90 backdrop-blur shrink-0 flex items-center justify-between px-2 sm:px-4 gap-2 border-t border-slate-200 dark:border-slate-700 rounded-lg">
+                        <button onClick={handleAIHelp} className={`flex flex-col items-center justify-center w-12 sm:w-14 h-full text-[9px] sm:text-[10px] ${aiLoading ? 'opacity-50' : ''} ${(myMatch.aiHelps?.[teamId]||0) >= 3 ? 'grayscale opacity-50' : 'text-cyan-600 dark:text-cyan-400'}`}>
+                            <span className="text-lg sm:text-xl">🤖</span>AI 헬프 ({(3 - (myMatch.aiHelps?.[teamId]||0))})
                         </button>
                         {isMyTurn && myMatch.roundStatus === 'DECISION' ? (
                             <div className="flex-1 flex gap-2 h-10">
-                                <button onClick={handleFold} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white rounded font-bold">포기 (Fold)</button>
-                                <button onClick={handleCall} className="flex-[2] bg-red-600 hover:bg-red-500 text-white rounded font-bold shadow-lg shadow-red-500/30">승부 (Call)</button>
+                                <button onClick={handleFold} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white rounded font-bold text-sm">포기</button>
+                                <button onClick={handleCall} className="flex-[2] bg-red-600 hover:bg-red-500 text-white rounded font-bold shadow-lg shadow-red-500/30 text-sm">승부 (Call)</button>
                             </div>
                         ) : (
-                            <div className="flex-1 text-center text-gray-500 text-sm flex items-center justify-center bg-slate-100 dark:bg-slate-900/50 h-10 rounded">{myMatch.roundStatus === 'SHOWDOWN' ? '결과 확인 대기' : '대기 중...'}</div>
+                            <div className="flex-1 text-center text-gray-500 text-xs sm:text-sm flex items-center justify-center bg-slate-100 dark:bg-slate-900/50 h-10 rounded">{myMatch.roundStatus === 'SHOWDOWN' ? '결과 확인 대기' : '대기 중...'}</div>
                         )}
                     </div>
                 </div>
