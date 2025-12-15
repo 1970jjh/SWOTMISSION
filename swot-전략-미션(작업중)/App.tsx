@@ -938,81 +938,91 @@ const UserGameView = ({ room, teamId, onUpdate, isAdminMode, onBackToDash }: { r
             </header>
 
             {room.status === 'PREPARING' && (
-                <>
-                     <div className="grid grid-cols-3 gap-2 mb-2 shrink-0">
-                        <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-center shadow-sm">
-                            <span className="text-[10px] text-gray-500 dark:text-gray-400">자본금 잔액</span>
-                            <div className={`text-xl font-black ${remainingChips < 0 ? 'text-red-500' : 'text-slate-900 dark:text-white'}`}>{remainingChips}억</div>
+                <div className="flex-1 flex flex-col min-h-0">
+                     {/* Stats Bar */}
+                     <div className="grid grid-cols-3 gap-1 sm:gap-2 mb-1 shrink-0">
+                        <div className="bg-white/80 dark:bg-slate-800/80 p-1.5 sm:p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-center shadow-sm">
+                            <span className="text-[9px] sm:text-[10px] text-gray-500 dark:text-gray-400">자본금 잔액</span>
+                            <div className={`text-base sm:text-xl font-black ${remainingChips < 0 ? 'text-red-500' : 'text-slate-900 dark:text-white'}`}>{remainingChips}억</div>
                         </div>
-                        <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-center shadow-sm">
-                             <span className="text-[10px] text-gray-500 dark:text-gray-400">카드 사용</span>
-                             <div className="text-xl font-black text-slate-900 dark:text-white">{usedCards.length}/10</div>
+                        <div className="bg-white/80 dark:bg-slate-800/80 p-1.5 sm:p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-center shadow-sm">
+                             <span className="text-[9px] sm:text-[10px] text-gray-500 dark:text-gray-400">카드 사용</span>
+                             <div className="text-base sm:text-xl font-black text-slate-900 dark:text-white">{usedCards.length}/10</div>
                         </div>
-                        <button 
+                        <button
                             onClick={handleSubmitStrategy}
-                            className={`rounded-xl font-bold text-sm shadow-xl flex flex-col items-center justify-center transition-all ${team.isReady ? 'bg-green-100 dark:bg-green-600/20 text-green-600 dark:text-green-500 border-2 border-green-500' : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:scale-105 active:scale-95'}`}
+                            className={`rounded-xl font-bold text-xs sm:text-sm shadow-xl flex flex-col items-center justify-center transition-all ${team.isReady ? 'bg-green-100 dark:bg-green-600/20 text-green-600 dark:text-green-500 border-2 border-green-500' : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:scale-105 active:scale-95'}`}
                         >
                             <span>{team.isReady ? "제출 완료" : "전략 제출"}</span>
-                            <span className="text-[10px] font-normal opacity-80">Ready to Go</span>
+                            <span className="text-[9px] sm:text-[10px] font-normal opacity-80">Ready to Go</span>
                         </button>
                     </div>
-                    <div className="flex-1 min-h-0 mb-4">
+
+                    {/* Game Board */}
+                    <div className="flex-1 min-h-[120px] max-h-[200px] sm:max-h-[280px] mb-1">
                         <BlueGameBoard strategy={strategy} onSetChips={handleSetChips} readOnly={team.isReady && !isAdminMode} onDragStart={handleDragStart} />
                     </div>
+
+                    {/* Card Deck - Fixed at bottom */}
                     {(!team.isReady || isAdminMode) && (
-                        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur border-t border-slate-200 dark:border-slate-800 p-2 md:p-4 rounded-t-xl shrink-0 z-20">
-                            <div className="flex justify-between gap-1 max-w-3xl mx-auto">
+                        <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur border-t border-slate-200 dark:border-slate-800 p-2 rounded-t-xl shrink-0 z-20">
+                            <div className="flex justify-between gap-0.5 sm:gap-1 max-w-3xl mx-auto">
                                 {CARDS.map(c => {
                                     const isUsed = usedCards.includes(c);
-                                    return <div key={c} onPointerDown={(e) => !isUsed && handleDragStart(e, c, 'deck')} className={`flex-1 aspect-[2/3] max-w-[50px] rounded font-bold text-xl shadow-md flex items-center justify-center transition-all ${getCardStyle(c, true)} ${isUsed ? 'opacity-20 cursor-default' : 'cursor-grab active:cursor-grabbing'}`}>{c}</div>;
+                                    return <div key={c} onPointerDown={(e) => !isUsed && handleDragStart(e, c, 'deck')} className={`flex-1 aspect-[2/3] max-w-[36px] sm:max-w-[50px] rounded font-bold text-base sm:text-xl shadow-md flex items-center justify-center transition-all ${getCardStyle(c, true)} ${isUsed ? 'opacity-20 cursor-default' : 'cursor-grab active:cursor-grabbing'}`}>{c}</div>;
                                 })}
                             </div>
                         </div>
                     )}
-                </>
+                </div>
             )}
 
             {(room.status === 'PLAYING' || room.status === 'FINISHED') && opponentTeam && myMatch && (
-                <div className="flex-1 flex flex-col gap-1 min-h-0 relative overflow-hidden">
+                <div className="flex-1 flex flex-col min-h-0 relative">
                     {/* Status overlay */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none w-full text-center px-4">
-                         {myMatch.roundStatus === 'DECISION' && <div className="bg-black/70 backdrop-blur-md text-white py-2 px-4 rounded-full inline-block border border-yellow-500 animate-pulse text-sm">{isMyTurn ? "당신의 결정 차례입니다!" : `${opponentTeam.name}의 결정을 기다리는 중...`}</div>}
-                         {myMatch.roundStatus === 'SHOWDOWN' && <button onClick={handleShowdown} className="pointer-events-auto bg-red-600 text-white font-black text-base sm:text-xl py-2 px-6 sm:py-3 sm:px-8 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.6)] animate-bounce border-4 border-white">SHOWDOWN! (카드 오픈)</button>}
+                    <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none w-full text-center px-4">
+                         {myMatch.roundStatus === 'DECISION' && <div className="bg-black/80 backdrop-blur-md text-white py-2 px-4 rounded-full inline-block border border-yellow-500 animate-pulse text-xs sm:text-sm">{isMyTurn ? "당신의 결정 차례입니다!" : `${opponentTeam.name}의 결정을 기다리는 중...`}</div>}
+                         {myMatch.roundStatus === 'SHOWDOWN' && <button onClick={handleShowdown} className="pointer-events-auto bg-red-600 text-white font-black text-sm sm:text-xl py-2 px-4 sm:py-3 sm:px-8 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.6)] animate-bounce border-2 sm:border-4 border-white">SHOWDOWN!</button>}
                     </div>
 
-                    {/* Opponent Board */}
-                    <div className="h-[35%] min-h-[120px] bg-slate-100/50 dark:bg-slate-900/50 backdrop-blur rounded-xl border border-red-500/30 overflow-hidden relative">
-                         <div className="absolute top-1 right-2 z-20"><span className="text-[10px] bg-slate-900/70 text-white px-2 py-0.5 rounded-full border border-red-500/30">상대 수익: <span className="text-yellow-400 font-bold">{opponentTeam.winnings}억</span></span></div>
-                         <BlueGameBoard strategy={opponentTeam.strategy || []} readOnly={true} opponentName={opponentTeam.name} currentRound={myMatch.currentRound} blindMode={isBlindMode} revealedHistory={revealedRounds} />
+                    {/* Game Boards Container - Scrollable */}
+                    <div className="flex-1 flex flex-col gap-1 overflow-y-auto min-h-0 pb-1">
+                        {/* Opponent Board */}
+                        <div className="flex-1 min-h-[100px] max-h-[140px] sm:max-h-[180px] bg-slate-100/50 dark:bg-slate-900/50 backdrop-blur rounded-xl border border-red-500/30 overflow-hidden relative">
+                             <div className="absolute top-1 right-2 z-20"><span className="text-[9px] sm:text-[10px] bg-slate-900/70 text-white px-2 py-0.5 rounded-full border border-red-500/30">상대: <span className="text-yellow-400 font-bold">{opponentTeam.winnings}억</span></span></div>
+                             <BlueGameBoard strategy={opponentTeam.strategy || []} readOnly={true} opponentName={opponentTeam.name} currentRound={myMatch.currentRound} blindMode={isBlindMode} revealedHistory={revealedRounds} />
+                        </div>
+
+                        {/* POT Info - Compact */}
+                        <div className="h-7 flex items-center justify-between px-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur shrink-0 border border-slate-200 dark:border-slate-700 rounded-lg">
+                             <div className="text-gray-500 dark:text-gray-400 text-[10px] font-medium">R{myMatch.currentRound}/10</div>
+                             <div className="flex items-center gap-1">
+                                 <span className="text-[10px] text-gray-500">POT:</span>
+                                 <span className="text-yellow-600 dark:text-yellow-400 font-black text-sm">{(team.strategy![myMatch.currentRound-1].chips + opponentTeam.strategy![myMatch.currentRound-1].chips + (myMatch.carryOver||0))}억</span>
+                             </div>
+                             <div className="text-gray-500 dark:text-gray-400 text-[10px]">Carry: {myMatch.carryOver || 0}</div>
+                        </div>
+
+                        {/* My Board */}
+                        <div className="flex-1 min-h-[100px] max-h-[140px] sm:max-h-[180px] bg-slate-100/50 dark:bg-slate-900/50 backdrop-blur rounded-xl border border-blue-500/30 overflow-hidden relative">
+                            <BlueGameBoard strategy={team.strategy || []} readOnly={true} currentRound={myMatch.currentRound} revealedHistory={revealedRounds} />
+                        </div>
                     </div>
 
-                    {/* POT Info - Compact */}
-                    <div className="h-8 flex items-center justify-between px-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur shrink-0 relative border-y border-slate-200 dark:border-slate-700 rounded-lg">
-                         <div className="text-gray-500 dark:text-gray-400 text-[10px] font-medium">R{myMatch.currentRound}/10</div>
-                         <div className="flex items-center gap-2">
-                             <span className="text-[10px] text-gray-500">POT:</span>
-                             <span className="text-yellow-600 dark:text-yellow-400 font-black text-sm">{(team.strategy![myMatch.currentRound-1].chips + opponentTeam.strategy![myMatch.currentRound-1].chips + (myMatch.carryOver||0))}억</span>
-                         </div>
-                         <div className="text-gray-500 dark:text-gray-400 text-[10px]">Carry: {myMatch.carryOver || 0}</div>
-                    </div>
-
-                    {/* My Board */}
-                    <div className="h-[35%] min-h-[120px] bg-slate-100/50 dark:bg-slate-900/50 backdrop-blur rounded-xl border border-blue-500/30 overflow-hidden relative">
-                        <BlueGameBoard strategy={team.strategy || []} readOnly={true} currentRound={myMatch.currentRound} revealedHistory={revealedRounds} />
-                    </div>
-
-                    {/* Action Bar */}
-                    <div className="h-14 bg-white/90 dark:bg-slate-800/90 backdrop-blur shrink-0 flex items-center justify-between px-2 sm:px-4 gap-2 border-t border-slate-200 dark:border-slate-700 rounded-lg">
-                        <button onClick={handleAIHelp} className={`flex flex-col items-center justify-center w-12 sm:w-14 h-full text-[9px] sm:text-[10px] ${aiLoading ? 'opacity-50' : ''} ${(myMatch.aiHelps?.[teamId]||0) >= 3 ? 'grayscale opacity-50' : 'text-cyan-600 dark:text-cyan-400'}`}>
-                            <span className="text-lg sm:text-xl">🤖</span>AI 헬프 ({(3 - (myMatch.aiHelps?.[teamId]||0))})
+                    {/* Action Bar - Fixed at bottom */}
+                    <div className="h-12 sm:h-14 bg-white/95 dark:bg-slate-800/95 backdrop-blur shrink-0 flex items-center justify-between px-2 gap-2 border-t border-slate-200 dark:border-slate-700 rounded-t-lg mt-1">
+                        <button onClick={handleAIHelp} className={`flex flex-col items-center justify-center w-10 sm:w-14 h-full text-[8px] sm:text-[10px] ${aiLoading ? 'opacity-50' : ''} ${(myMatch.aiHelps?.[teamId]||0) >= 3 ? 'grayscale opacity-50' : 'text-cyan-600 dark:text-cyan-400'}`}>
+                            <span className="text-base sm:text-xl">🤖</span>
+                            <span className="hidden sm:inline">AI 헬프 ({(3 - (myMatch.aiHelps?.[teamId]||0))})</span>
+                            <span className="sm:hidden">({(3 - (myMatch.aiHelps?.[teamId]||0))})</span>
                         </button>
                         {isMyTurn && myMatch.roundStatus === 'DECISION' ? (
-                            <div className="flex-1 flex gap-2 h-10">
-                                <button onClick={handleFold} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white rounded font-bold text-sm">포기</button>
-                                <button onClick={handleCall} className="flex-[2] bg-red-600 hover:bg-red-500 text-white rounded font-bold shadow-lg shadow-red-500/30 text-sm">승부 (Call)</button>
+                            <div className="flex-1 flex gap-2 h-9 sm:h-10">
+                                <button onClick={handleFold} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white rounded font-bold text-xs sm:text-sm">포기</button>
+                                <button onClick={handleCall} className="flex-[2] bg-red-600 hover:bg-red-500 text-white rounded font-bold shadow-lg shadow-red-500/30 text-xs sm:text-sm">승부 (Call)</button>
                             </div>
                         ) : (
-                            <div className="flex-1 text-center text-gray-500 text-xs sm:text-sm flex items-center justify-center bg-slate-100 dark:bg-slate-900/50 h-10 rounded">{myMatch.roundStatus === 'SHOWDOWN' ? '결과 확인 대기' : '대기 중...'}</div>
+                            <div className="flex-1 text-center text-gray-500 text-xs flex items-center justify-center bg-slate-100 dark:bg-slate-900/50 h-9 sm:h-10 rounded">{myMatch.roundStatus === 'SHOWDOWN' ? '결과 확인 대기' : '대기 중...'}</div>
                         )}
                     </div>
                 </div>
