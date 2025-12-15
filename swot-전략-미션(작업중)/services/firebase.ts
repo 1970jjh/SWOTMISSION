@@ -69,19 +69,43 @@ const toArray = <T>(data: unknown): T[] => {
 // Normalize Room data from Firebase (convert nested objects to arrays)
 const normalizeRoom = (room: any): Room => {
     if (!room) return room;
+
+    // Explicitly preserve all critical room fields to ensure sync works correctly
     return {
-        ...room,
+        id: room.id,
+        name: room.name,
+        totalTeams: room.totalTeams,
+        currentRound: room.currentRound || 1,
+        status: room.status || 'PREPARING', // Critical: must explicitly preserve status
+        feedback: room.feedback,
+        winnerPhotoUrls: room.winnerPhotoUrls,
+        winnerPosterUrl: room.winnerPosterUrl,
         teams: toArray(room.teams).map((team: any) => ({
-            ...team,
+            id: team.id,
+            name: team.name,
+            roomId: team.roomId,
+            isReady: team.isReady || false,
+            score: team.score || 0,
+            winnings: team.winnings || 0,
             members: toArray(team.members),
             strategy: toArray(team.strategy)
         })),
         matches: toArray(room.matches).map((match: any) => ({
-            ...match,
+            id: match.id,
+            teamAId: match.teamAId || '',
+            teamBId: match.teamBId || '',
+            teamAScore: match.teamAScore || 0,
+            teamBScore: match.teamBScore || 0,
+            currentRound: match.currentRound || 1,
+            roundStatus: match.roundStatus || 'READY',
+            turnOwner: match.turnOwner,
+            pot: match.pot || 0,
+            carryOver: match.carryOver || 0,
             history: toArray(match.history),
             aiHelps: match.aiHelps || {},
             aiAdvice: match.aiAdvice || {},
-            // Round result synchronization fields - must be explicitly preserved
+            winnerId: match.winnerId,
+            // Round result synchronization fields
             lastRoundResult: match.lastRoundResult || undefined,
             resultConfirmed: match.resultConfirmed || {},
             lastAction: match.lastAction || undefined
