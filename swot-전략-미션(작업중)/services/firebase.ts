@@ -66,6 +66,25 @@ const toArray = <T>(data: unknown): T[] => {
     return [];
 };
 
+// Remove undefined values from object (Firebase doesn't accept undefined)
+const removeUndefined = (obj: any): any => {
+    if (obj === null || obj === undefined) return null;
+    if (Array.isArray(obj)) {
+        return obj.map(removeUndefined);
+    }
+    if (typeof obj === 'object') {
+        const cleaned: any = {};
+        for (const key of Object.keys(obj)) {
+            const value = obj[key];
+            if (value !== undefined) {
+                cleaned[key] = removeUndefined(value);
+            }
+        }
+        return cleaned;
+    }
+    return obj;
+};
+
 // Normalize Room data from Firebase (convert nested objects to arrays)
 const normalizeRoom = (room: any): Room => {
     if (!room) return room;
@@ -124,9 +143,10 @@ export const saveRoomsToFirebase = async (rooms: Room[]): Promise<void> => {
     if (roomsRef) {
         try {
             // Save as object with room IDs as keys for better Firebase compatibility
-            const roomsObject: Record<string, Room> = {};
+            // Remove undefined values as Firebase doesn't accept them
+            const roomsObject: Record<string, any> = {};
             rooms.forEach(room => {
-                roomsObject[room.id] = room;
+                roomsObject[room.id] = removeUndefined(room);
             });
             await set(roomsRef, roomsObject);
         } catch (error) {
