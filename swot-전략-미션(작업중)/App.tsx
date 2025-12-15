@@ -919,7 +919,16 @@ const UserGameView = ({ room, teamId, onUpdate, isAdminMode, onBackToDash }: { r
         let scoreB = myMatch.teamBScore;
         if (stratA.card > stratB.card) { winner = 'A'; winningsA += pot; scoreA += 1; }
         else if (stratB.card > stratA.card) { winner = 'B'; winningsB += pot; scoreB += 1; }
-        else { if (currentRound === TOTAL_ROUNDS) { winningsA += pot / 2; winningsB += pot / 2; } else { carryOver = pot; } }
+        else {
+            // Draw - chips carry over to next round, or return on last round
+            if (currentRound === TOTAL_ROUNDS) {
+                // Last round draw: each team takes back their own chips
+                winningsA += stratA.chips + ((myMatch.carryOver || 0) / 2);
+                winningsB += stratB.chips + ((myMatch.carryOver || 0) / 2);
+            } else {
+                carryOver = pot;
+            }
+        }
         const historyItem = { round: currentRound, teamACard: stratA.card, teamBCard: stratB.card, teamAChips: stratA.chips, teamBChips: stratB.chips, result: winner === 'A' ? 'A_WON' : (winner === 'B' ? 'B_WON' : 'DRAW'), potWon: winner === 'DRAW' ? 0 : pot };
         const updatedTeamA = { ...teamA, winnings: winningsA };
         const updatedTeamB = { ...teamB, winnings: winningsB };
@@ -1068,72 +1077,100 @@ const UserGameView = ({ room, teamId, onUpdate, isAdminMode, onBackToDash }: { r
 
             {(room.status === 'PLAYING' || room.status === 'FINISHED') && opponentTeam && myMatch && (
                 <div className="flex-1 flex flex-col min-h-0 relative">
-                    {/* Status overlay */}
-                    <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none w-full text-center px-4">
-                         {myMatch.roundStatus === 'DECISION' && <div className="bg-black/80 backdrop-blur-md text-white py-2 px-4 rounded-full inline-block border border-yellow-500 animate-pulse text-xs sm:text-sm">{isMyTurn ? "당신의 결정 차례입니다!" : `${opponentTeam.name}의 결정을 기다리는 중...`}</div>}
-                         {myMatch.roundStatus === 'SHOWDOWN' && <button onClick={handleShowdown} className="pointer-events-auto bg-red-600 text-white font-black text-sm sm:text-xl py-2 px-4 sm:py-3 sm:px-8 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.6)] animate-bounce border-2 sm:border-4 border-white">SHOWDOWN!</button>}
-                    </div>
+                    {/* Status overlay - only during active game */}
+                    {myMatch.roundStatus !== 'FINISHED' && (
+                        <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none w-full text-center px-4">
+                             {myMatch.roundStatus === 'DECISION' && <div className="bg-black/80 backdrop-blur-md text-white py-2 px-4 rounded-full inline-block border border-yellow-500 animate-pulse text-xs sm:text-sm">{isMyTurn ? "당신의 결정 차례입니다!" : `${opponentTeam.name}의 결정을 기다리는 중...`}</div>}
+                             {myMatch.roundStatus === 'SHOWDOWN' && <button onClick={handleShowdown} className="pointer-events-auto bg-red-600 text-white font-black text-sm sm:text-xl py-2 px-4 sm:py-3 sm:px-8 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.6)] animate-bounce border-2 sm:border-4 border-white">SHOWDOWN!</button>}
+                        </div>
+                    )}
 
                     {/* Game Boards Container - Scrollable */}
                     <div className="flex-1 flex flex-col gap-1 overflow-y-auto min-h-0 pb-1">
+                        {/* Game Finished Header */}
+                        {myMatch.roundStatus === 'FINISHED' && (
+                            <div className="text-center py-2 shrink-0">
+                                <span className="text-sm font-bold text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/50 px-4 py-1.5 rounded-full shadow">🏆 경기 종료 - 전체 결과 🏆</span>
+                            </div>
+                        )}
+
                         {/* Opponent Board */}
-                        <div className="flex-1 min-h-[100px] max-h-[140px] sm:max-h-[180px] bg-slate-100/50 dark:bg-slate-900/50 backdrop-blur rounded-xl border border-red-500/30 overflow-hidden relative">
+                        <div className={`${myMatch.roundStatus === 'FINISHED' ? 'min-h-[120px]' : 'flex-1 min-h-[100px] max-h-[140px] sm:max-h-[180px]'} bg-slate-100/50 dark:bg-slate-900/50 backdrop-blur rounded-xl border border-red-500/30 overflow-hidden relative`}>
                              <div className="absolute top-1 right-2 z-20"><span className="text-[9px] sm:text-[10px] bg-slate-900/70 text-white px-2 py-0.5 rounded-full border border-red-500/30">상대: <span className="text-yellow-400 font-bold">{opponentTeam.winnings}억</span></span></div>
-                             <BlueGameBoard strategy={opponentTeam.strategy || []} readOnly={true} opponentName={opponentTeam.name} currentRound={myMatch.currentRound} blindMode={isBlindMode} revealedHistory={revealedRounds} />
+                             <BlueGameBoard
+                                 strategy={opponentTeam.strategy || []}
+                                 readOnly={true}
+                                 opponentName={opponentTeam.name}
+                                 currentRound={myMatch.roundStatus === 'FINISHED' ? undefined : myMatch.currentRound}
+                                 blindMode={myMatch.roundStatus === 'FINISHED' ? false : isBlindMode}
+                                 revealedHistory={myMatch.roundStatus === 'FINISHED' ? [1,2,3,4,5,6,7,8,9,10] : revealedRounds}
+                             />
                         </div>
 
-                        {/* POT Info - Compact */}
-                        <div className="h-7 flex items-center justify-between px-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur shrink-0 border border-slate-200 dark:border-slate-700 rounded-lg">
-                             <div className="text-gray-500 dark:text-gray-400 text-[10px] font-medium">R{myMatch.currentRound}/10</div>
-                             <div className="flex items-center gap-1">
-                                 <span className="text-[10px] text-gray-500">POT:</span>
-                                 <span className="text-yellow-600 dark:text-yellow-400 font-black text-sm">{(team.strategy![myMatch.currentRound-1].chips + opponentTeam.strategy![myMatch.currentRound-1].chips + (myMatch.carryOver||0))}억</span>
-                             </div>
-                             <div className="text-gray-500 dark:text-gray-400 text-[10px]">Carry: {myMatch.carryOver || 0}</div>
-                        </div>
+                        {/* POT Info - Only during active game */}
+                        {myMatch.roundStatus !== 'FINISHED' && (
+                            <div className="h-7 flex items-center justify-between px-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur shrink-0 border border-slate-200 dark:border-slate-700 rounded-lg">
+                                 <div className="text-gray-500 dark:text-gray-400 text-[10px] font-medium">R{myMatch.currentRound}/10</div>
+                                 <div className="flex items-center gap-1">
+                                     <span className="text-[10px] text-gray-500">POT:</span>
+                                     <span className="text-yellow-600 dark:text-yellow-400 font-black text-sm">{(team.strategy![myMatch.currentRound-1].chips + opponentTeam.strategy![myMatch.currentRound-1].chips + (myMatch.carryOver||0))}억</span>
+                                 </div>
+                                 <div className="text-gray-500 dark:text-gray-400 text-[10px]">Carry: {myMatch.carryOver || 0}</div>
+                            </div>
+                        )}
 
                         {/* My Board */}
-                        <div className="flex-1 min-h-[100px] max-h-[140px] sm:max-h-[180px] bg-slate-100/50 dark:bg-slate-900/50 backdrop-blur rounded-xl border border-blue-500/30 overflow-hidden relative">
-                            <BlueGameBoard strategy={team.strategy || []} readOnly={true} currentRound={myMatch.currentRound} revealedHistory={revealedRounds} />
+                        <div className={`${myMatch.roundStatus === 'FINISHED' ? 'min-h-[120px]' : 'flex-1 min-h-[100px] max-h-[140px] sm:max-h-[180px]'} bg-slate-100/50 dark:bg-slate-900/50 backdrop-blur rounded-xl border border-blue-500/30 overflow-hidden relative`}>
+                            <div className="absolute top-1 right-2 z-20"><span className="text-[9px] sm:text-[10px] bg-slate-900/70 text-white px-2 py-0.5 rounded-full border border-blue-500/30">나: <span className="text-yellow-400 font-bold">{team.winnings}억</span></span></div>
+                            <BlueGameBoard
+                                strategy={team.strategy || []}
+                                readOnly={true}
+                                currentRound={myMatch.roundStatus === 'FINISHED' ? undefined : myMatch.currentRound}
+                                blindMode={false}
+                                revealedHistory={myMatch.roundStatus === 'FINISHED' ? [1,2,3,4,5,6,7,8,9,10] : revealedRounds}
+                            />
                         </div>
+
+                        {/* Game Results Section - Scrollable at bottom when FINISHED */}
+                        {myMatch.roundStatus === 'FINISHED' && (
+                            <div className="bg-gradient-to-r from-yellow-500/20 via-amber-500/20 to-yellow-500/20 backdrop-blur rounded-xl border-2 border-yellow-500 p-4 mt-2">
+                                <div className="text-center mb-3">
+                                    <span className="text-sm font-bold text-slate-900 dark:text-white">📊 최종 결과</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-3">
+                                    {/* Opponent Result */}
+                                    <div className={`flex-1 p-3 rounded-xl text-center ${(opponentTeam.winnings || 0) > (team.winnings || 0) ? 'bg-red-500/30 border-2 border-red-500 ring-2 ring-red-400' : 'bg-slate-200/50 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600'}`}>
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{opponentTeam.name}</div>
+                                        <div className={`text-2xl font-black ${(opponentTeam.winnings || 0) > (team.winnings || 0) ? 'text-red-600 dark:text-red-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                                            {opponentTeam.winnings || 0}억
+                                        </div>
+                                        {(opponentTeam.winnings || 0) > (team.winnings || 0) && <div className="text-xs text-red-500 font-bold mt-1">🥇 승리</div>}
+                                        {(opponentTeam.winnings || 0) === (team.winnings || 0) && <div className="text-xs text-gray-500 font-bold mt-1">🤝 무승부</div>}
+                                        {(opponentTeam.winnings || 0) < (team.winnings || 0) && <div className="text-xs text-gray-400 mt-1">패배</div>}
+                                    </div>
+
+                                    <div className="text-2xl font-black text-gray-400">VS</div>
+
+                                    {/* My Result */}
+                                    <div className={`flex-1 p-3 rounded-xl text-center ${(team.winnings || 0) > (opponentTeam.winnings || 0) ? 'bg-blue-500/30 border-2 border-blue-500 ring-2 ring-blue-400' : 'bg-slate-200/50 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600'}`}>
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{team.name} (나)</div>
+                                        <div className={`text-2xl font-black ${(team.winnings || 0) > (opponentTeam.winnings || 0) ? 'text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                                            {team.winnings || 0}억
+                                        </div>
+                                        {(team.winnings || 0) > (opponentTeam.winnings || 0) && <div className="text-xs text-blue-500 font-bold mt-1">🥇 승리</div>}
+                                        {(team.winnings || 0) === (opponentTeam.winnings || 0) && <div className="text-xs text-gray-500 font-bold mt-1">🤝 무승부</div>}
+                                        {(team.winnings || 0) < (opponentTeam.winnings || 0) && <div className="text-xs text-gray-400 mt-1">패배</div>}
+                                    </div>
+                                </div>
+                                <div className="text-center mt-3 text-xs text-gray-500 dark:text-gray-400">
+                                    전체 {myMatch.history?.length || 0}라운드 완료 | 차이: {Math.abs((team.winnings || 0) - (opponentTeam.winnings || 0))}억
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Action Bar or Results - Fixed at bottom */}
-                    {myMatch.roundStatus === 'FINISHED' ? (
-                        /* Game Results Section */
-                        <div className="bg-gradient-to-r from-yellow-500/20 via-amber-500/20 to-yellow-500/20 backdrop-blur shrink-0 border-t-2 border-yellow-500 rounded-t-lg mt-1 p-3">
-                            <div className="text-center mb-2">
-                                <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/50 px-3 py-1 rounded-full">🏆 경기 종료 - FINAL RESULT 🏆</span>
-                            </div>
-                            <div className="flex items-center justify-between gap-2">
-                                {/* Opponent Result */}
-                                <div className={`flex-1 p-2 rounded-lg text-center ${(opponentTeam.winnings || 0) > (team.winnings || 0) ? 'bg-red-500/20 border border-red-500 ring-2 ring-red-400' : 'bg-slate-200/50 dark:bg-slate-700/50'}`}>
-                                    <div className="text-[10px] text-gray-500 dark:text-gray-400">{opponentTeam.name}</div>
-                                    <div className={`text-lg font-black ${(opponentTeam.winnings || 0) > (team.winnings || 0) ? 'text-red-600 dark:text-red-400' : 'text-slate-600 dark:text-slate-300'}`}>
-                                        {opponentTeam.winnings || 0}억
-                                    </div>
-                                    {(opponentTeam.winnings || 0) > (team.winnings || 0) && <div className="text-[9px] text-red-500 font-bold">🥇 승리</div>}
-                                    {(opponentTeam.winnings || 0) === (team.winnings || 0) && <div className="text-[9px] text-gray-500 font-bold">무승부</div>}
-                                </div>
-
-                                <div className="text-xl font-black text-gray-400">VS</div>
-
-                                {/* My Result */}
-                                <div className={`flex-1 p-2 rounded-lg text-center ${(team.winnings || 0) > (opponentTeam.winnings || 0) ? 'bg-blue-500/20 border border-blue-500 ring-2 ring-blue-400' : 'bg-slate-200/50 dark:bg-slate-700/50'}`}>
-                                    <div className="text-[10px] text-gray-500 dark:text-gray-400">{team.name} (나)</div>
-                                    <div className={`text-lg font-black ${(team.winnings || 0) > (opponentTeam.winnings || 0) ? 'text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'}`}>
-                                        {team.winnings || 0}억
-                                    </div>
-                                    {(team.winnings || 0) > (opponentTeam.winnings || 0) && <div className="text-[9px] text-blue-500 font-bold">🥇 승리</div>}
-                                    {(team.winnings || 0) === (opponentTeam.winnings || 0) && <div className="text-[9px] text-gray-500 font-bold">무승부</div>}
-                                </div>
-                            </div>
-                            <div className="text-center mt-2 text-[10px] text-gray-500 dark:text-gray-400">
-                                전체 {myMatch.history?.length || 0}라운드 완료
-                            </div>
-                        </div>
-                    ) : (
-                        /* Action Bar */
+                    {/* Action Bar - Only during active game */}
+                    {myMatch.roundStatus !== 'FINISHED' && (
                         <div className="h-12 sm:h-14 bg-white/95 dark:bg-slate-800/95 backdrop-blur shrink-0 flex items-center justify-between px-2 gap-2 border-t border-slate-200 dark:border-slate-700 rounded-t-lg mt-1">
                             <button onClick={handleAIHelp} className={`flex flex-col items-center justify-center w-10 sm:w-14 h-full text-[8px] sm:text-[10px] ${aiLoading ? 'opacity-50' : ''} ${(myMatch.aiHelps?.[teamId]||0) >= 3 ? 'grayscale opacity-50' : 'text-cyan-600 dark:text-cyan-400'}`}>
                                 <span className="text-base sm:text-xl">🤖</span>
