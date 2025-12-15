@@ -9,26 +9,63 @@ const getAI = () => {
 
 export const generateSWOTAnalysis = async (room: Room): Promise<string> => {
     const ai = getAI();
-    
-    // Construct prompt with game data
+
+    // Helper function to calculate rounds won from match history
+    const getTeamRoundsWon = (teamId: string): { count: number, rounds: number[] } => {
+        const wonRounds: number[] = [];
+        room.matches.forEach(match => {
+            const isTeamA = match.teamAId === teamId;
+            const isTeamB = match.teamBId === teamId;
+            if (!isTeamA && !isTeamB) return;
+            match.history?.forEach(h => {
+                const teamWon = (isTeamA && (h.result === 'A_WON' || h.result === 'B_FOLDED')) ||
+                               (isTeamB && (h.result === 'B_WON' || h.result === 'A_FOLDED'));
+                if (teamWon) {
+                    wonRounds.push(h.round);
+                }
+            });
+        });
+        return { count: wonRounds.length, rounds: wonRounds.sort((a, b) => a - b) };
+    };
+
+    // Construct prompt with game data (including actual rounds won)
     const teamData = room.teams.map(t => {
-        return `Team: ${t.name}, Winnings(Total Chips): ${t.winnings}, Rounds Won: ${t.score}, Strategy Pattern: ${t.strategy?.map(r => `[R${r.round}:Card${r.card}/Chip${r.chips}]`).join(' ')}`;
+        const roundsData = getTeamRoundsWon(t.id);
+        const roundsWonStr = roundsData.count > 0
+            ? `${roundsData.count}승 (R${roundsData.rounds.join(', R')})`
+            : '0승';
+        return `Team: ${t.name}, Winnings(Total Chips): ${t.winnings}억, Rounds Won: ${roundsWonStr}, Strategy Pattern: ${t.strategy?.map(r => `[R${r.round}:Card${r.card}/Chip${r.chips}]`).join(' ')}`;
     }).join('\n');
+
+    // Include match history for more accurate analysis
+    const matchHistory = room.matches.map((match, idx) => {
+        const teamA = room.teams.find(t => t.id === match.teamAId);
+        const teamB = room.teams.find(t => t.id === match.teamBId);
+        const historyStr = match.history?.map(h =>
+            `R${h.round}: ${teamA?.name}(Card ${h.teamACard}, Chip ${h.teamAChips}) vs ${teamB?.name}(Card ${h.teamBCard}, Chip ${h.teamBChips}) → ${h.result}, Pot: ${h.potWon}억`
+        ).join('\n') || 'No history';
+        return `Match ${idx + 1}: ${teamA?.name} vs ${teamB?.name}\n${historyStr}`;
+    }).join('\n\n');
 
     const prompt = `
     You are a Strategic Management Consultant & Comedy Writer.
     Analyze the gameplay data of the following teams in a "Resource Allocation Strategy Game".
-    
+
     **Game Rules**:
     - Resources: 0-9 Number Cards, 30 Chips.
     - Goal: Win rounds by playing higher cards or managing chip betting.
-    
-    **Team Data**:
+    - Each round, teams bet chips. Higher card wins the pot. If cards are equal, pot carries over.
+    - Teams can FOLD (forfeit round) or CALL (compete).
+
+    **Team Summary**:
     ${teamData}
-    
+
+    **Detailed Match History**:
+    ${matchHistory}
+
     **Task**:
-    Provide a feedback report in Korean. 
-    
+    Provide a feedback report in Korean.
+
     **CRITICAL FORMATTING RULES**:
     1. **DO NOT USE MARKDOWN SYMBOLS** like **, *, #, ##, -, *.
     2. Instead, use HTML tags for styling:
@@ -37,15 +74,16 @@ export const generateSWOTAnalysis = async (room: Room): Promise<string> => {
        - Use <span style="background-color:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">text</span> for highlights.
        - Use <br> for line breaks.
        - Use <div style="margin-bottom:16px;"> for spacing.
-    
+
     **Content Requirements**:
-    1. **Part 1: Team SWOT Analysis**: For each team, provide Strengths(강점), Weaknesses(약점), Opportunities(기회), Threats(위협). Be professional but concise.
-    2. **Part 2: Comprehensive Comic Analysis (종합 분석 - 코믹 버전)**: 
-       - Write a *very funny, witty, and humorous* summary of the entire game. 
-       - Make fun of teams who bluffed and failed, or praised lucky winners. 
-       - Use emojis liberally. 
+    1. **Part 1: Team SWOT Analysis**: For each team, provide Strengths(강점), Weaknesses(약점), Opportunities(기회), Threats(위협). Be professional but concise. Reference specific rounds and strategies.
+    2. **Part 2: Comprehensive Comic Analysis (종합 분석 - 코믹 버전)**:
+       - Write a *very funny, witty, and humorous* summary of the entire game.
+       - Reference actual round results and winning/losing moments.
+       - Make fun of teams who bluffed and failed, or praised lucky winners.
+       - Use emojis liberally.
        - Title this section as <h3 style="color:#34d399; border-bottom: 2px solid #34d399; padding-bottom: 5px; margin-top: 30px;">🤣 종합 분석 결과 (Comic Ver.)</h3>
-    
+
     Font family should be 'Noto Sans KR'.
     `;
 
