@@ -149,7 +149,8 @@ const BlueGameBoard = ({
     currentRound,
     blindMode,
     revealedHistory = [],
-    onDragStart
+    onDragStart,
+    onCardDoubleClick
 }: {
     strategy: RoundStrategy[],
     onSetChips?: (r: number, d: number) => void,
@@ -158,7 +159,8 @@ const BlueGameBoard = ({
     currentRound?: number,
     blindMode?: boolean,
     revealedHistory?: number[],
-    onDragStart?: (e: React.PointerEvent, card: number, source: string) => void
+    onDragStart?: (e: React.PointerEvent, card: number, source: string) => void,
+    onCardDoubleClick?: (roundIdx: number) => void
 }) => {
 
     return (
@@ -198,11 +200,18 @@ const BlueGameBoard = ({
                                             onDragStart(e, round.card, idx.toString());
                                         }
                                     }}
+                                    onDoubleClick={() => {
+                                        if(!readOnly && round.card !== -1 && onCardDoubleClick) {
+                                            onCardDoubleClick(idx);
+                                        }
+                                    }}
                                     className={`
                                         w-6 h-8 rounded flex items-center justify-center shadow-md border select-none shrink-0
                                         ${getCardStyle(round.card, false, shouldHideNumber)}
+                                        ${!readOnly && round.card !== -1 ? 'cursor-pointer hover:ring-2 hover:ring-red-400' : ''}
                                         ${!readOnly ? 'cursor-grab active:cursor-grabbing' : ''}
                                     `}
+                                    title={!readOnly && round.card !== -1 ? "더블클릭으로 카드 제거" : ""}
                                 >
                                     {round.card !== -1 ? (
                                         shouldHideNumber ? (
@@ -842,6 +851,23 @@ const UserGameView = ({ room, teamId, onUpdate, isAdminMode, onBackToDash }: { r
             const current = next[roundIdx].chips;
             const newVal = current + delta;
             if (newVal < 1) return prev; // Cannot go below 1 chip
+
+            // Prevent stealing more than needed
+            if (delta < 0) {
+                // Calculate current stolen amount with this change
+                let wouldSteal = 0;
+                next[roundIdx] = { ...next[roundIdx], chips: newVal };
+                team!.strategy!.forEach((s, i) => {
+                    if (i >= myMatch.currentRound && next[i]) {
+                        wouldSteal += (s.chips - next[i].chips);
+                    }
+                });
+                // If stealing would exceed needed amount, prevent it
+                if (wouldSteal > neededChips) {
+                    return prev;
+                }
+            }
+
             next[roundIdx] = { ...next[roundIdx], chips: newVal };
             return next;
         });
@@ -942,7 +968,17 @@ const UserGameView = ({ room, teamId, onUpdate, isAdminMode, onBackToDash }: { r
         } else { if (item.source !== 'deck') { const sourceRoundIdx = parseInt(item.source || '-1'); if (sourceRoundIdx !== -1) { setStrategy(prev => { const next = prev.map(p => ({...p})); next[sourceRoundIdx].card = -1; return next; }); } } }
         currentDragItem.current = null;
     };
-    
+
+    // Double-click to remove card from round
+    const handleCardDoubleClick = (roundIdx: number) => {
+        if (room.status !== 'PREPARING' && !isAdminMode) return;
+        setStrategy(prev => {
+            const next = prev.map(p => ({...p}));
+            next[roundIdx].card = -1;
+            return next;
+        });
+    };
+
     if (!team) return <div>Loading...</div>;
 
     // Calculate stolen amount for modal
@@ -975,14 +1011,18 @@ const UserGameView = ({ room, teamId, onUpdate, isAdminMode, onBackToDash }: { r
                     </div>
                 </div>
                 <div className="flex gap-2 items-center">
-                    {room.status === 'PLAYING' && (
-                        <div className="bg-yellow-100 dark:bg-yellow-600/30 border border-yellow-500 text-yellow-800 dark:text-yellow-300 px-3 py-1 rounded-full text-xs font-bold">
-                             💰 확보 자금: {team.winnings || 0}억
+                    {room.status === 'PLAYING' && opponentTeam && (
+                        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 px-2 py-1 rounded-lg text-[10px] sm:text-xs font-bold">
+                            <span className="text-red-500">{opponentTeam.name?.slice(0,4)}: <span className="text-red-600 dark:text-red-400">{opponentTeam.winnings || 0}억</span></span>
+                            <span className="text-gray-400 mx-0.5">vs</span>
+                            <span className="text-blue-500">나: <span className="text-blue-600 dark:text-blue-400 font-black">{team.winnings || 0}억</span></span>
                         </div>
                     )}
-                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${room.status === 'PREPARING' ? 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-600 dark:text-yellow-500' : 'bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-500'}`}>
-                        {room.status}
-                    </span>
+                    {room.status === 'PREPARING' && (
+                        <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-yellow-100 dark:bg-yellow-500/20 text-yellow-600 dark:text-yellow-500">
+                            {room.status}
+                        </span>
+                    )}
                 </div>
             </header>
 
@@ -1009,7 +1049,7 @@ const UserGameView = ({ room, teamId, onUpdate, isAdminMode, onBackToDash }: { r
 
                     {/* Game Board */}
                     <div className="flex-1 min-h-[120px] max-h-[200px] sm:max-h-[280px] mb-1">
-                        <BlueGameBoard strategy={strategy} onSetChips={handleSetChips} readOnly={team.isReady && !isAdminMode} onDragStart={handleDragStart} />
+                        <BlueGameBoard strategy={strategy} onSetChips={handleSetChips} readOnly={team.isReady && !isAdminMode} onDragStart={handleDragStart} onCardDoubleClick={handleCardDoubleClick} />
                     </div>
 
                     {/* Card Deck - Fixed at bottom */}
