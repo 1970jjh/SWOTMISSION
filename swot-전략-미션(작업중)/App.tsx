@@ -812,13 +812,14 @@ const UserGameView = ({ room, teamId, onUpdate, isAdminMode, onBackToDash }: { r
             result: isTeamA ? 'A_FOLDED' : 'B_FOLDED',
             potWon: pot
         };
-        const nextRound = currentRound + 1;
-        const isGameEnd = nextRound > TOTAL_ROUNDS;
         const updatedTeams = room.teams.map(t => t.id === opponentTeam!.id ? updatedOpponent : t);
+        // Go to RESULT status for both teams to confirm
         updateTeamsAndMatch(updatedTeams, {
-            currentRound: isGameEnd ? currentRound : nextRound,
-            roundStatus: isGameEnd ? 'FINISHED' : 'READY',
-            turnOwner: undefined, pot: 0, carryOver: 0,
+            roundStatus: 'RESULT',
+            turnOwner: undefined,
+            lastAction: { teamId, action: 'FOLD' },
+            lastRoundResult: historyItem as any,
+            resultConfirmed: {},
             history: [...(myMatch.history || []), historyItem as any]
         });
     };
@@ -831,13 +832,17 @@ const UserGameView = ({ room, teamId, onUpdate, isAdminMode, onBackToDash }: { r
         const diff = oppStrat.chips - myStrat.chips;
         let winnings = team!.winnings || 0;
         if (winnings >= diff) {
-            const updatedTeam = { 
-                ...team!, 
+            const updatedTeam = {
+                ...team!,
                 winnings: winnings - diff,
                 strategy: team!.strategy!.map((s, i) => i === currentRound - 1 ? { ...s, chips: s.chips + diff } : s)
             };
             const updatedTeams = room.teams.map(t => t.id === teamId ? updatedTeam : t);
-            updateTeamsAndMatch(updatedTeams, { roundStatus: 'SHOWDOWN', turnOwner: undefined });
+            updateTeamsAndMatch(updatedTeams, {
+                roundStatus: 'SHOWDOWN',
+                turnOwner: undefined,
+                lastAction: { teamId, action: 'CALL' }
+            });
         } else {
             setNeededChips(diff - winnings);
             setTempStrategy(JSON.parse(JSON.stringify(team!.strategy))); // Clone for modal
@@ -933,9 +938,41 @@ const UserGameView = ({ room, teamId, onUpdate, isAdminMode, onBackToDash }: { r
         const updatedTeamA = { ...teamA, winnings: winningsA };
         const updatedTeamB = { ...teamB, winnings: winningsB };
         const updatedTeams = room.teams.map(t => t.id === teamA.id ? updatedTeamA : (t.id === teamB.id ? updatedTeamB : t));
-        const nextRound = currentRound + 1;
+
+        // Go to RESULT status for both teams to confirm
+        updateTeamsAndMatch(updatedTeams, {
+            roundStatus: 'RESULT',
+            turnOwner: undefined,
+            pot: 0,
+            carryOver,
+            teamAScore: scoreA,
+            teamBScore: scoreB,
+            lastRoundResult: historyItem as any,
+            resultConfirmed: {},
+            history: [...(myMatch.history || []), historyItem as any]
+        });
+    };
+
+    // Confirm round result and proceed to next round when both teams confirm
+    const handleConfirmResult = () => {
+        const confirmed = { ...(myMatch.resultConfirmed || {}), [teamId]: true };
+        const bothConfirmed = confirmed[myMatch.teamAId] && confirmed[myMatch.teamBId];
+        const nextRound = myMatch.currentRound + 1;
         const isGameEnd = nextRound > TOTAL_ROUNDS;
-        updateTeamsAndMatch(updatedTeams, { currentRound: isGameEnd ? currentRound : nextRound, roundStatus: isGameEnd ? 'FINISHED' : 'READY', turnOwner: undefined, pot: 0, carryOver, teamAScore: scoreA, teamBScore: scoreB, history: [...(myMatch.history || []), historyItem as any] });
+
+        if (bothConfirmed) {
+            // Both teams confirmed, move to next round
+            updateMatchState({
+                currentRound: isGameEnd ? myMatch.currentRound : nextRound,
+                roundStatus: isGameEnd ? 'FINISHED' : 'READY',
+                resultConfirmed: {},
+                lastRoundResult: undefined,
+                lastAction: undefined
+            });
+        } else {
+            // Just mark this team as confirmed
+            updateMatchState({ resultConfirmed: confirmed });
+        }
     };
 
     // ... (Drag & Drop Logic same as before) ...
@@ -1078,10 +1115,21 @@ const UserGameView = ({ room, teamId, onUpdate, isAdminMode, onBackToDash }: { r
             {(room.status === 'PLAYING' || room.status === 'FINISHED') && opponentTeam && myMatch && (
                 <div className="flex-1 flex flex-col min-h-0 relative">
                     {/* Status overlay - only during active game */}
-                    {myMatch.roundStatus !== 'FINISHED' && (
+                    {myMatch.roundStatus !== 'FINISHED' && myMatch.roundStatus !== 'RESULT' && (
                         <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none w-full text-center px-4">
                              {myMatch.roundStatus === 'DECISION' && <div className="bg-black/80 backdrop-blur-md text-white py-2 px-4 rounded-full inline-block border border-yellow-500 animate-pulse text-xs sm:text-sm">{isMyTurn ? "당신의 결정 차례입니다!" : `${opponentTeam.name}의 결정을 기다리는 중...`}</div>}
                              {myMatch.roundStatus === 'SHOWDOWN' && <button onClick={handleShowdown} className="pointer-events-auto bg-red-600 text-white font-black text-sm sm:text-xl py-2 px-4 sm:py-3 sm:px-8 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.6)] animate-bounce border-2 sm:border-4 border-white">SHOWDOWN!</button>}
+                        </div>
+                    )}
+
+                    {/* Opponent Action Notification */}
+                    {myMatch.lastAction && myMatch.lastAction.teamId !== teamId && myMatch.roundStatus === 'SHOWDOWN' && (
+                        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-40 animate-bounce">
+                            <div className={`px-4 py-2 rounded-full text-white text-sm font-bold shadow-lg ${myMatch.lastAction.action === 'FOLD' ? 'bg-gray-600' : 'bg-red-600'}`}>
+                                {myMatch.lastAction.action === 'FOLD'
+                                    ? `🏳️ ${opponentTeam.name}이(가) 포기했습니다!`
+                                    : `⚔️ ${opponentTeam.name}이(가) 승부를 선택했습니다!`}
+                            </div>
                         </div>
                     )}
 
@@ -1219,6 +1267,87 @@ const UserGameView = ({ room, teamId, onUpdate, isAdminMode, onBackToDash }: { r
                             {activeAdvice}
                         </div>
                         <button onClick={closeAIHelp} className="mt-6 w-full py-3 bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300 rounded-lg hover:bg-cyan-200 dark:hover:bg-cyan-900 transition-colors shrink-0">닫기</button>
+                    </div>
+                </div>
+            )}
+
+            {/* Round Result Modal - Both teams must confirm */}
+            {myMatch?.roundStatus === 'RESULT' && myMatch.lastRoundResult && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl max-w-sm w-full border-2 border-yellow-500 shadow-[0_0_40px_rgba(234,179,8,0.4)] animate-scale-up">
+                        <div className="text-center mb-4">
+                            <div className="text-4xl mb-2">
+                                {myMatch.lastRoundResult.result === 'A_FOLDED' || myMatch.lastRoundResult.result === 'B_FOLDED' ? '🏳️' :
+                                 myMatch.lastRoundResult.result === 'DRAW' ? '🤝' : '⚔️'}
+                            </div>
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                                Round {myMatch.lastRoundResult.round} 결과
+                            </h3>
+                        </div>
+
+                        {/* Cards Comparison */}
+                        <div className="flex items-center justify-center gap-4 mb-4">
+                            <div className="text-center">
+                                <div className="text-xs text-gray-500 mb-1">{isTeamA ? team.name : opponentTeam?.name}</div>
+                                <div className={`w-12 h-16 rounded-lg flex items-center justify-center text-2xl font-black shadow-lg border-2 ${myMatch.lastRoundResult.teamACard % 2 === 0 ? 'bg-slate-900 text-white border-white' : 'bg-white text-slate-900 border-slate-300'}`}>
+                                    {myMatch.lastRoundResult.teamACard}
+                                </div>
+                                <div className="text-xs text-yellow-600 mt-1">{myMatch.lastRoundResult.teamAChips}억</div>
+                            </div>
+                            <div className="text-2xl font-black text-gray-400">VS</div>
+                            <div className="text-center">
+                                <div className="text-xs text-gray-500 mb-1">{isTeamA ? opponentTeam?.name : team.name}</div>
+                                <div className={`w-12 h-16 rounded-lg flex items-center justify-center text-2xl font-black shadow-lg border-2 ${myMatch.lastRoundResult.teamBCard % 2 === 0 ? 'bg-slate-900 text-white border-white' : 'bg-white text-slate-900 border-slate-300'}`}>
+                                    {myMatch.lastRoundResult.teamBCard}
+                                </div>
+                                <div className="text-xs text-yellow-600 mt-1">{myMatch.lastRoundResult.teamBChips}억</div>
+                            </div>
+                        </div>
+
+                        {/* Result */}
+                        <div className={`text-center py-3 rounded-xl mb-4 ${
+                            (myMatch.lastRoundResult.result === 'A_WON' && isTeamA) || (myMatch.lastRoundResult.result === 'B_WON' && !isTeamA) ||
+                            (myMatch.lastRoundResult.result === 'B_FOLDED' && isTeamA) || (myMatch.lastRoundResult.result === 'A_FOLDED' && !isTeamA)
+                                ? 'bg-green-100 dark:bg-green-900/30 border border-green-500'
+                                : myMatch.lastRoundResult.result === 'DRAW'
+                                    ? 'bg-gray-100 dark:bg-gray-700/30 border border-gray-400'
+                                    : 'bg-red-100 dark:bg-red-900/30 border border-red-500'
+                        }`}>
+                            <div className="text-lg font-black">
+                                {(myMatch.lastRoundResult.result === 'A_WON' && isTeamA) || (myMatch.lastRoundResult.result === 'B_WON' && !isTeamA)
+                                    ? <span className="text-green-600">🎉 승리! +{myMatch.lastRoundResult.potWon}억</span>
+                                    : (myMatch.lastRoundResult.result === 'B_FOLDED' && isTeamA) || (myMatch.lastRoundResult.result === 'A_FOLDED' && !isTeamA)
+                                        ? <span className="text-green-600">🎉 상대 포기! +{myMatch.lastRoundResult.potWon}억</span>
+                                        : myMatch.lastRoundResult.result === 'DRAW'
+                                            ? <span className="text-gray-600">무승부 (다음 라운드로 이월)</span>
+                                            : (myMatch.lastRoundResult.result === 'A_FOLDED' && isTeamA) || (myMatch.lastRoundResult.result === 'B_FOLDED' && !isTeamA)
+                                                ? <span className="text-red-600">😢 포기함 -{myMatch.lastRoundResult.potWon}억</span>
+                                                : <span className="text-red-600">😢 패배 -{myMatch.lastRoundResult.potWon}억</span>
+                                }
+                            </div>
+                        </div>
+
+                        {/* Confirmation Status */}
+                        <div className="flex justify-center gap-4 mb-4 text-xs">
+                            <div className={`px-3 py-1 rounded-full ${myMatch.resultConfirmed?.[myMatch.teamAId] ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                {isTeamA ? '나' : opponentTeam?.name?.slice(0,4)} {myMatch.resultConfirmed?.[myMatch.teamAId] ? '✓ 확인' : '대기중'}
+                            </div>
+                            <div className={`px-3 py-1 rounded-full ${myMatch.resultConfirmed?.[myMatch.teamBId] ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                {!isTeamA ? '나' : opponentTeam?.name?.slice(0,4)} {myMatch.resultConfirmed?.[myMatch.teamBId] ? '✓ 확인' : '대기중'}
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={handleConfirmResult}
+                            disabled={myMatch.resultConfirmed?.[teamId]}
+                            className={`w-full py-3 rounded-xl font-bold text-white transition-all ${
+                                myMatch.resultConfirmed?.[teamId]
+                                    ? 'bg-gray-400 cursor-not-allowed'
+                                    : 'bg-yellow-500 hover:bg-yellow-400 shadow-lg'
+                            }`}
+                        >
+                            {myMatch.resultConfirmed?.[teamId] ? '상대팀 확인 대기중...' : '확인 (다음 라운드)'}
+                        </button>
                     </div>
                 </div>
             )}
