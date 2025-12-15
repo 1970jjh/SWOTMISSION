@@ -440,6 +440,38 @@ const AdminDashboard = ({ room, onUpdate, onBack, onEnterTeam, onDelete }: { roo
         return sorted.findIndex(t => t.id === teamId) + 1;
     };
 
+    // Helper to calculate rounds won for each team
+    const getTeamRoundsWon = (teamId: string): { count: number, rounds: number[] } => {
+        const wonRounds: number[] = [];
+
+        room.matches.forEach(match => {
+            const isTeamA = match.teamAId === teamId;
+            const isTeamB = match.teamBId === teamId;
+
+            if (!isTeamA && !isTeamB) return;
+
+            match.history?.forEach(h => {
+                const teamWon = (isTeamA && (h.result === 'A_WON' || h.result === 'B_FOLDED')) ||
+                               (isTeamB && (h.result === 'B_WON' || h.result === 'A_FOLDED'));
+                if (teamWon) {
+                    wonRounds.push(h.round);
+                }
+            });
+        });
+
+        return { count: wonRounds.length, rounds: wonRounds.sort((a, b) => a - b) };
+    };
+
+    // Download poster image
+    const handleDownloadPoster = () => {
+        if (room.winnerPosterUrl) {
+            const link = document.createElement('a');
+            link.href = room.winnerPosterUrl;
+            link.download = `Winner_Poster_${room.name}.png`;
+            link.click();
+        }
+    };
+
     return (
         <div className="p-4 md:p-8 max-w-[1600px] mx-auto animate-fade-in pb-20 relative z-10">
             <header className="flex justify-between items-center mb-6">
@@ -522,53 +554,71 @@ const AdminDashboard = ({ room, onUpdate, onBack, onEnterTeam, onDelete }: { roo
             </div>
             
             {room.status === 'FINISHED' && (
-                <div className="space-y-4" id="report-container">
+                <div className="space-y-4">
                      <div className="bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-md p-6 rounded-xl border border-slate-300 dark:border-slate-700">
                          <div className="flex justify-between items-center mb-4">
                              <h3 className="text-lg font-bold text-slate-900 dark:text-white">🏆 우승팀 포스터 & 피드백</h3>
-                             <button onClick={handleDownloadPDF} className="bg-slate-700 text-white px-3 py-1 rounded text-sm hover:bg-slate-600">PDF 다운로드</button>
-                         </div>
-                         
-                         {/* PDF Export Container */}
-                         <div id="report-container" className="space-y-6 bg-white p-4 rounded-xl text-black">
-                             {/* Winner Poster */}
-                             {room.winnerPosterUrl && (
-                                 <div className="text-center mb-6">
-                                     <h4 className="text-2xl font-black text-slate-900 mb-2">WINNER POSTER</h4>
-                                     <img src={room.winnerPosterUrl} alt="Winner" className="max-w-full md:max-w-md mx-auto rounded-xl shadow-2xl border-4 border-yellow-500" />
-                                 </div>
-                             )}
-
-                             {/* Team Standings Table */}
-                             <div className="mb-6">
-                                 <h4 className="text-xl font-bold text-slate-900 mb-3 border-b-2 border-slate-200 pb-1">📊 최종 성적 (Final Standings)</h4>
-                                 <table className="w-full text-sm text-left border-collapse">
-                                     <thead>
-                                         <tr className="bg-slate-100 text-slate-700">
-                                             <th className="p-2 border">Rank</th>
-                                             <th className="p-2 border">Team</th>
-                                             <th className="p-2 border">Members</th>
-                                             <th className="p-2 border">Winnings (억)</th>
-                                             <th className="p-2 border">Rounds Won</th>
-                                         </tr>
-                                     </thead>
-                                     <tbody>
-                                         {[...room.teams].sort((a,b) => b.winnings - a.winnings).map((team, idx) => (
-                                             <tr key={team.id} className="border-b">
-                                                 <td className="p-2 border font-bold text-center">{idx+1}</td>
-                                                 <td className="p-2 border font-bold">{team.name}</td>
-                                                 <td className="p-2 border text-gray-600">{team.members.join(', ')}</td>
-                                                 <td className="p-2 border font-bold text-yellow-700">{team.winnings}</td>
-                                                 <td className="p-2 border">{team.score}</td>
-                                             </tr>
-                                         ))}
-                                     </tbody>
-                                 </table>
+                             <div className="flex gap-2">
+                                 {room.winnerPosterUrl && (
+                                     <button onClick={handleDownloadPoster} className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-500">포스터 다운로드</button>
+                                 )}
+                                 <button onClick={handleDownloadPDF} className="bg-slate-700 text-white px-3 py-1 rounded text-sm hover:bg-slate-600">PDF 다운로드</button>
                              </div>
-                             
-                             {/* AI Feedback */}
+                         </div>
+
+                         {/* PDF Export Container */}
+                         <div id="report-container" className="bg-white p-4 rounded-xl text-black">
+                             {/* PAGE 1: Final Standings + Winner Poster */}
+                             <div style={{ pageBreakAfter: room.feedback ? 'always' : 'auto' }}>
+                                 {/* Team Standings Table */}
+                                 <div className="mb-6">
+                                     <h4 className="text-xl font-bold text-slate-900 mb-3 border-b-2 border-slate-200 pb-1">📊 최종 성적 (Final Standings)</h4>
+                                     <table className="w-full text-sm text-left border-collapse">
+                                         <thead>
+                                             <tr className="bg-slate-100 text-slate-700">
+                                                 <th className="p-2 border">Rank</th>
+                                                 <th className="p-2 border">Team</th>
+                                                 <th className="p-2 border">Members</th>
+                                                 <th className="p-2 border">Winnings (억)</th>
+                                                 <th className="p-2 border">Rounds Won</th>
+                                             </tr>
+                                         </thead>
+                                         <tbody>
+                                             {[...room.teams].sort((a,b) => b.winnings - a.winnings).map((team, idx) => {
+                                                 const roundsData = getTeamRoundsWon(team.id);
+                                                 return (
+                                                     <tr key={team.id} className="border-b">
+                                                         <td className="p-2 border font-bold text-center">{idx+1}</td>
+                                                         <td className="p-2 border font-bold">{team.name}</td>
+                                                         <td className="p-2 border text-gray-600">{team.members.join(', ')}</td>
+                                                         <td className="p-2 border font-bold text-yellow-700">{team.winnings}</td>
+                                                         <td className="p-2 border">
+                                                             <span className="font-bold text-blue-600">{roundsData.count}승</span>
+                                                             {roundsData.rounds.length > 0 && (
+                                                                 <span className="text-gray-500 text-xs ml-1">
+                                                                     (R{roundsData.rounds.join(', R')})
+                                                                 </span>
+                                                             )}
+                                                         </td>
+                                                     </tr>
+                                                 );
+                                             })}
+                                         </tbody>
+                                     </table>
+                                 </div>
+
+                                 {/* Winner Poster - Always show if exists */}
+                                 {room.winnerPosterUrl && (
+                                     <div className="text-center mt-6">
+                                         <h4 className="text-2xl font-black text-slate-900 mb-4">🏆 WINNER POSTER</h4>
+                                         <img src={room.winnerPosterUrl} alt="Winner" className="max-w-full md:max-w-md mx-auto rounded-xl shadow-2xl border-4 border-yellow-500" />
+                                     </div>
+                                 )}
+                             </div>
+
+                             {/* PAGE 2+: AI Strategy Analysis */}
                              {room.feedback && (
-                                 <div className="mt-6">
+                                 <div className="mt-8">
                                      <h4 className="text-xl font-bold text-slate-900 mb-3 border-b-2 border-slate-200 pb-1">🤖 AI Strategy Analysis</h4>
                                      <div dangerouslySetInnerHTML={{ __html: room.feedback }} className="prose max-w-none font-sans text-sm leading-relaxed" />
                                  </div>
@@ -586,8 +636,8 @@ const AdminDashboard = ({ room, onUpdate, onBack, onEnterTeam, onDelete }: { roo
                                     </div>
                                  </div>
                                  <div className="flex-1">
-                                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">팀원 이름</label>
-                                    <input className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-slate-900 dark:text-white" value={winnerNames} onChange={e=>setWinnerNames(e.target.value)} />
+                                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">팀원 이름 (포스터에 표시됨)</label>
+                                    <input className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-slate-900 dark:text-white" placeholder="예: 홍길동, 김철수, 이영희" value={winnerNames} onChange={e=>setWinnerNames(e.target.value)} />
                                     <div className="flex gap-2 mt-2">
                                         <button onClick={handleCreatePoster} disabled={posterLoading || photos.length === 0} className="flex-1 py-3 bg-purple-600 rounded-lg text-white font-bold disabled:opacity-50 text-xs">
                                             {posterLoading ? '생성 중...' : '포스터 생성'}
