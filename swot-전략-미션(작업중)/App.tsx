@@ -17,8 +17,12 @@ const saveRooms = (rooms: Room[]) => {
 // getRooms is now only used for initial load fallback
 // Real-time updates come through subscribeToRooms
 const getRooms = (): Room[] => {
-    const data = localStorage.getItem('swot_game_rooms');
-    return data ? JSON.parse(data) : [];
+    try {
+        const data = localStorage.getItem('swot_game_rooms');
+        return data ? JSON.parse(data) : [];
+    } catch {
+        return [];
+    }
 };
 
 const speak = (text: string) => {
@@ -1117,16 +1121,15 @@ const App: React.FC = () => {
         // Subscribe to real-time updates from Firebase
         // This will sync data across all devices (PC admin + mobile users)
         const unsubscribe = subscribeToRooms((updatedRooms) => {
-            setRooms(updatedRooms);
+            setRooms(Array.isArray(updatedRooms) ? updatedRooms : []);
         });
 
-        const storedAuth = localStorage.getItem('swot_admin_auth');
-        if (storedAuth === 'true') setIsAdminAuthenticated(true);
-
-        // Auto-reconnect check
-        const session = localStorage.getItem('swot_user_session');
-        if (session) {
-            // Optional: You can auto-join here if you want
+        // Safe localStorage access
+        try {
+            const storedAuth = localStorage.getItem('swot_admin_auth');
+            if (storedAuth === 'true') setIsAdminAuthenticated(true);
+        } catch {
+            // localStorage not available
         }
 
         // Show connection status
@@ -1165,7 +1168,7 @@ const App: React.FC = () => {
     const handleAdminLogin = () => {
         if(adminInput === ADMIN_PW) {
             setIsAdminAuthenticated(true);
-            localStorage.setItem('swot_admin_auth', 'true');
+            try { localStorage.setItem('swot_admin_auth', 'true'); } catch {}
             setView('ADMIN_DASH');
         } else {
             alert('비밀번호가 틀렸습니다.');
@@ -1173,7 +1176,7 @@ const App: React.FC = () => {
     };
 
     const handleAdminLogout = () => {
-        localStorage.removeItem('swot_admin_auth');
+        try { localStorage.removeItem('swot_admin_auth'); } catch {}
         setIsAdminAuthenticated(false);
         setAdminInput('');
         setView('LANDING');
@@ -1210,16 +1213,18 @@ const App: React.FC = () => {
     const handleJoinClick = (roomId: string, teamId: string) => {
         setPendingTeamId(teamId);
         setCurrentRoomId(roomId);
-        
+
         // Check for existing session for this room/team
-        const session = localStorage.getItem('swot_user_session');
         let defaultName = '';
-        if (session) {
-            const parsed = JSON.parse(session);
-            if (parsed.roomId === roomId && parsed.teamId === teamId) {
-                defaultName = parsed.userName;
+        try {
+            const session = localStorage.getItem('swot_user_session');
+            if (session) {
+                const parsed = JSON.parse(session);
+                if (parsed.roomId === roomId && parsed.teamId === teamId) {
+                    defaultName = parsed.userName;
+                }
             }
-        }
+        } catch {}
         setJoinName(defaultName);
         setShowNameModal(true);
     };
@@ -1244,8 +1249,8 @@ const App: React.FC = () => {
         }
 
         // Save session
-        localStorage.setItem('swot_user_session', JSON.stringify({ roomId: currentRoomId, teamId: pendingTeamId, userName: joinName }));
-        
+        try { localStorage.setItem('swot_user_session', JSON.stringify({ roomId: currentRoomId, teamId: pendingTeamId, userName: joinName })); } catch {}
+
         setCurrentTeamId(pendingTeamId);
         setIsAdminVisiting(false);
         setShowNameModal(false);

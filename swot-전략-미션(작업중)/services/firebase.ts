@@ -37,21 +37,83 @@ const getRoomsRef = (): DatabaseReference | null => {
     return ref(database, 'rooms');
 };
 
+// Safe localStorage access (some browsers block it)
+const safeLocalStorageGet = (key: string): string | null => {
+    try {
+        return localStorage.getItem(key);
+    } catch {
+        return null;
+    }
+};
+
+const safeLocalStorageSet = (key: string, value: string): void => {
+    try {
+        localStorage.setItem(key, value);
+    } catch {
+        console.warn('localStorage not available');
+    }
+};
+
+// Convert Firebase data to Room array
+// Firebase can return object with numeric keys instead of array
+const toArray = <T>(data: unknown): T[] => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (typeof data === 'object') {
+        // Convert object with keys to array
+        return Object.values(data as Record<string, T>).filter(Boolean);
+    }
+    return [];
+};
+
+// Normalize Room data from Firebase (convert nested objects to arrays)
+const normalizeRoom = (room: any): Room => {
+    if (!room) return room;
+    return {
+        ...room,
+        teams: toArray(room.teams).map((team: any) => ({
+            ...team,
+            members: toArray(team.members),
+            strategy: toArray(team.strategy)
+        })),
+        matches: toArray(room.matches).map((match: any) => ({
+            ...match,
+            history: toArray(match.history),
+            aiHelps: match.aiHelps || {},
+            aiAdvice: match.aiAdvice || {}
+        }))
+    };
+};
+
+const toRoomArray = (data: unknown): Room[] => {
+    const rooms = toArray<any>(data);
+    return rooms.map(normalizeRoom).filter(Boolean);
+};
+
 // Save rooms to Firebase
 export const saveRoomsToFirebase = async (rooms: Room[]): Promise<void> => {
     const roomsRef = getRoomsRef();
     if (roomsRef) {
         try {
-            await set(roomsRef, rooms);
+            // Save as object with room IDs as keys for better Firebase compatibility
+            const roomsObject: Record<string, Room> = {};
+            rooms.forEach(room => {
+                roomsObject[room.id] = room;
+            });
+            await set(roomsRef, roomsObject);
         } catch (error) {
             console.error('Error saving to Firebase:', error);
             // Fallback to localStorage
-            localStorage.setItem('swot_game_rooms', JSON.stringify(rooms));
+            safeLocalStorageSet('swot_game_rooms', JSON.stringify(rooms));
         }
     } else {
         // Fallback to localStorage if Firebase not configured
-        localStorage.setItem('swot_game_rooms', JSON.stringify(rooms));
-        window.dispatchEvent(new Event('storage'));
+        safeLocalStorageSet('swot_game_rooms', JSON.stringify(rooms));
+        try {
+            window.dispatchEvent(new Event('storage'));
+        } catch {
+            // Ignore dispatch errors
+        }
     }
 };
 
@@ -62,18 +124,18 @@ export const getRoomsFromFirebase = async (): Promise<Room[]> => {
         try {
             const snapshot = await get(roomsRef);
             if (snapshot.exists()) {
-                return snapshot.val() as Room[];
+                return toRoomArray(snapshot.val());
             }
             return [];
         } catch (error) {
             console.error('Error reading from Firebase:', error);
             // Fallback to localStorage
-            const data = localStorage.getItem('swot_game_rooms');
+            const data = safeLocalStorageGet('swot_game_rooms');
             return data ? JSON.parse(data) : [];
         }
     } else {
         // Fallback to localStorage
-        const data = localStorage.getItem('swot_game_rooms');
+        const data = safeLocalStorageGet('swot_game_rooms');
         return data ? JSON.parse(data) : [];
     }
 };
@@ -85,14 +147,15 @@ export const subscribeToRooms = (callback: (rooms: Room[]) => void): (() => void
     if (roomsRef) {
         const unsubscribe = onValue(roomsRef, (snapshot) => {
             if (snapshot.exists()) {
-                callback(snapshot.val() as Room[]);
+                const rooms = toRoomArray(snapshot.val());
+                callback(rooms);
             } else {
                 callback([]);
             }
         }, (error) => {
             console.error('Firebase subscription error:', error);
-            // Fallback: use localStorage with polling
-            const data = localStorage.getItem('swot_game_rooms');
+            // Fallback: use localStorage
+            const data = safeLocalStorageGet('swot_game_rooms');
             callback(data ? JSON.parse(data) : []);
         });
 
@@ -100,15 +163,19 @@ export const subscribeToRooms = (callback: (rooms: Room[]) => void): (() => void
     } else {
         // Fallback: localStorage with storage event
         const handleStorage = () => {
-            const data = localStorage.getItem('swot_game_rooms');
+            const data = safeLocalStorageGet('swot_game_rooms');
             callback(data ? JSON.parse(data) : []);
         };
 
         // Initial load
         handleStorage();
 
-        window.addEventListener('storage', handleStorage);
-        return () => window.removeEventListener('storage', handleStorage);
+        try {
+            window.addEventListener('storage', handleStorage);
+            return () => window.removeEventListener('storage', handleStorage);
+        } catch {
+            return () => {};
+        }
     }
 };
 
