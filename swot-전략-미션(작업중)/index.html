@@ -52,6 +52,46 @@
       @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
       .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
       .animate-slide-up { animation: slideUp 0.5s ease-out forwards; }
+
+      /* PDF Export Styles - Prevent content from being cut off */
+      #report-container {
+        font-size: 12px;
+      }
+      #report-container h1, #report-container h2, #report-container h3,
+      #report-container h4, #report-container h5, #report-container h6 {
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+      }
+      #report-container p, #report-container li {
+        orphans: 3;
+        widows: 3;
+      }
+      #report-container img {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        max-width: 100%;
+      }
+      #report-container table {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      #report-container .pdf-analysis-content > * {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        margin-bottom: 8px;
+      }
+      #report-container .pdf-analysis-content h1,
+      #report-container .pdf-analysis-content h2,
+      #report-container .pdf-analysis-content h3,
+      #report-container .pdf-analysis-content h4 {
+        margin-top: 12px;
+        margin-bottom: 6px;
+        page-break-after: avoid !important;
+      }
+      #report-container .pdf-analysis-content ul,
+      #report-container .pdf-analysis-content ol {
+        page-break-inside: avoid !important;
+      }
     </style>
 </head>
   <body class="bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-white antialiased transition-colors duration-300">
