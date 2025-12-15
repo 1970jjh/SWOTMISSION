@@ -431,11 +431,17 @@ const AdminDashboard = ({ room, onUpdate, onBack, onEnterTeam, onDelete }: { roo
         const element = document.getElementById('report-container');
         if (element && typeof html2pdf !== 'undefined') {
             const opt = {
-                margin: 0.2,
+                margin: [0.3, 0.3, 0.3, 0.3],
                 filename: `SWOT_Analysis_${room.name}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    letterRendering: true
+                },
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
             };
             html2pdf().set(opt).from(element).save();
         } else {
@@ -578,9 +584,9 @@ const AdminDashboard = ({ room, onUpdate, onBack, onEnterTeam, onDelete }: { roo
                          {/* PDF Export Container */}
                          <div id="report-container" className="bg-white p-4 rounded-xl text-black">
                              {/* PAGE 1: Final Standings + Winner Poster */}
-                             <div style={{ pageBreakAfter: room.feedback ? 'always' : 'auto' }}>
+                             <div style={{ pageBreakInside: 'avoid', pageBreakAfter: room.feedback ? 'always' : 'auto' }}>
                                  {/* Team Standings Table */}
-                                 <div className="mb-6">
+                                 <div className="mb-4" style={{ pageBreakInside: 'avoid' }}>
                                      <h4 className="text-xl font-bold text-slate-900 mb-3 border-b-2 border-slate-200 pb-1">📊 최종 성적 (Final Standings)</h4>
                                      <table className="w-full text-sm text-left border-collapse">
                                          <thead>
@@ -618,18 +624,26 @@ const AdminDashboard = ({ room, onUpdate, onBack, onEnterTeam, onDelete }: { roo
 
                                  {/* Winner Poster - Always show if exists */}
                                  {room.winnerPosterUrl && (
-                                     <div className="text-center mt-6">
-                                         <h4 className="text-2xl font-black text-slate-900 mb-4">🏆 WINNER POSTER</h4>
-                                         <img src={room.winnerPosterUrl} alt="Winner" className="max-w-full md:max-w-md mx-auto rounded-xl shadow-2xl border-4 border-yellow-500" />
+                                     <div className="text-center mt-4" style={{ pageBreakInside: 'avoid' }}>
+                                         <h4 className="text-2xl font-black text-slate-900 mb-3">🏆 WINNER POSTER</h4>
+                                         <img src={room.winnerPosterUrl} alt="Winner" style={{ maxWidth: '380px', maxHeight: '500px', objectFit: 'contain', pageBreakInside: 'avoid' }} className="mx-auto rounded-xl shadow-2xl border-4 border-yellow-500" />
                                      </div>
                                  )}
                              </div>
 
                              {/* PAGE 2+: AI Strategy Analysis */}
                              {room.feedback && (
-                                 <div className="mt-8">
-                                     <h4 className="text-xl font-bold text-slate-900 mb-3 border-b-2 border-slate-200 pb-1">🤖 AI Strategy Analysis</h4>
-                                     <div dangerouslySetInnerHTML={{ __html: room.feedback }} className="prose max-w-none font-sans text-sm leading-relaxed" />
+                                 <div className="mt-6" style={{ pageBreakBefore: 'always' }}>
+                                     <h4 className="text-xl font-bold text-slate-900 mb-3 border-b-2 border-slate-200 pb-1" style={{ pageBreakAfter: 'avoid' }}>🤖 AI Strategy Analysis</h4>
+                                     <div
+                                         dangerouslySetInnerHTML={{ __html: room.feedback }}
+                                         className="prose max-w-none font-sans text-sm leading-relaxed pdf-analysis-content"
+                                         style={{
+                                             lineHeight: '1.6',
+                                             wordBreak: 'keep-all',
+                                             overflowWrap: 'break-word'
+                                         }}
+                                     />
                                  </div>
                              )}
                          </div>
