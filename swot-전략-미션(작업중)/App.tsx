@@ -721,21 +721,28 @@ const UserGameView = ({ room, teamId, onUpdate, isAdminMode, onBackToDash }: { r
     const activeAdvice = myMatch?.aiAdvice?.[teamId];
 
     // ... (Game Engine Logic, Update Functions, Actions same as before) ...
+    // Only Team A triggers state transitions to prevent race conditions
     useEffect(() => {
         if (room.status !== 'PLAYING' || !myMatch || !team || !opponentTeam) return;
+        // Only Team A handles state transitions from READY to DECISION/SHOWDOWN
+        if (!isTeamA) return;
 
         const myStrat = team.strategy![myMatch.currentRound - 1];
         const oppStrat = opponentTeam.strategy![myMatch.currentRound - 1];
 
         if (myMatch.roundStatus === 'READY') {
-            if (myStrat.chips === oppStrat.chips) {
-                updateMatchState({ roundStatus: 'SHOWDOWN' });
-            } else {
-                const fewerChipsTeamId = myStrat.chips < oppStrat.chips ? team.id : opponentTeam.id;
-                updateMatchState({ roundStatus: 'DECISION', turnOwner: fewerChipsTeamId });
-            }
+            // Small delay to ensure Firebase sync is complete
+            const timer = setTimeout(() => {
+                if (myStrat.chips === oppStrat.chips) {
+                    updateMatchState({ roundStatus: 'SHOWDOWN' });
+                } else {
+                    const fewerChipsTeamId = myStrat.chips < oppStrat.chips ? team.id : opponentTeam.id;
+                    updateMatchState({ roundStatus: 'DECISION', turnOwner: fewerChipsTeamId });
+                }
+            }, 100);
+            return () => clearTimeout(timer);
         }
-    }, [room.status, myMatch?.currentRound, myMatch?.roundStatus, myMatch?.pot]);
+    }, [room.status, myMatch?.currentRound, myMatch?.roundStatus, myMatch?.pot, isTeamA]);
 
     const updateMatchState = (updates: Partial<Match>) => {
         const newMatches = [...room.matches];
@@ -1046,7 +1053,7 @@ const UserGameView = ({ room, teamId, onUpdate, isAdminMode, onBackToDash }: { r
             <DragOverlay />
             
             {/* ... (Header, PREPARING view, Game View same as before) ... */}
-            <header className="flex justify-between items-start mb-2 shrink-0">
+            <header className="flex justify-between items-start mb-2 shrink-0 pl-8">
                 <div className="flex flex-col">
                     <div className="flex items-center gap-2">
                         {isAdminMode && <button onClick={onBackToDash} className="bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded text-xs text-slate-800 dark:text-white">Back</button>}
@@ -1726,13 +1733,13 @@ const App: React.FC = () => {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-sans selection:bg-indigo-500 selection:text-white overflow-x-hidden touch-manipulation transition-colors duration-500 relative">
              <MatrixBackground isDarkMode={darkMode} />
-             {/* Global Theme Toggle - Moved to Bottom Right for Mobile Landscape Safety */}
-             <div className="fixed bottom-4 right-4 z-[9999]">
-                <button 
+             {/* Global Theme Toggle - Top Left for Mobile */}
+             <div className="fixed top-2 left-2 z-[9999]">
+                <button
                     onClick={() => setDarkMode(!darkMode)}
-                    className="p-2 rounded-full bg-white/20 backdrop-blur-md border border-white/20 text-xs font-bold hover:bg-white/30 transition-all text-slate-800 dark:text-white shadow-lg"
+                    className="p-1.5 rounded-full bg-white/30 dark:bg-slate-800/50 backdrop-blur-md border border-white/30 dark:border-slate-600/50 text-xs font-bold hover:bg-white/50 dark:hover:bg-slate-700/50 transition-all text-slate-800 dark:text-white shadow-md"
                 >
-                    {darkMode ? '☀️ Light' : '🌙 Dark'}
+                    {darkMode ? '☀️' : '🌙'}
                 </button>
              </div>
             {renderContent()}
