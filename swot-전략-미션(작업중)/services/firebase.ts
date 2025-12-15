@@ -80,7 +80,11 @@ const normalizeRoom = (room: any): Room => {
             ...match,
             history: toArray(match.history),
             aiHelps: match.aiHelps || {},
-            aiAdvice: match.aiAdvice || {}
+            aiAdvice: match.aiAdvice || {},
+            // Round result synchronization fields - must be explicitly preserved
+            lastRoundResult: match.lastRoundResult || undefined,
+            resultConfirmed: match.resultConfirmed || {},
+            lastAction: match.lastAction || undefined
         }))
     };
 };
