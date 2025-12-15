@@ -28,15 +28,20 @@ export interface Match {
   
   // Game State
   currentRound: number;
-  roundStatus: 'READY' | 'DECISION' | 'SHOWDOWN' | 'FINISHED'; 
+  roundStatus: 'READY' | 'DECISION' | 'SHOWDOWN' | 'RESULT' | 'FINISHED';
   turnOwner?: string; // Team ID who needs to make a decision (Fold/Call)
   pot: number; // Current chips in the pot for this round
   carryOver: number; // Chips carried over from previous draws
-  
+
+  // Round result confirmation
+  lastAction?: { teamId: string; action: 'FOLD' | 'CALL' }; // Track last action for notification
+  resultConfirmed?: Record<string, boolean>; // teamId -> confirmed
+  lastRoundResult?: RoundHistory; // Store last round result for display
+
   history: RoundHistory[];
   aiHelps: Record<string, number>; // teamId -> count used
   aiAdvice?: Record<string, string>; // teamId -> active advice text (for syncing)
-  
+
   winnerId?: string;
 }
 
