@@ -164,12 +164,12 @@ const BlueGameBoard = ({
     return (
         <div className={`w-full h-full flex flex-col`}>
             {opponentName && (
-                <div className="text-center py-1 flex items-center justify-center gap-2 shrink-0">
-                    <span className="bg-red-600 text-white text-xs px-3 py-1 rounded-full font-bold shadow-lg">VS {opponentName}</span>
+                <div className="text-center py-0.5 flex items-center justify-center shrink-0">
+                    <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold shadow-lg">VS {opponentName}</span>
                 </div>
             )}
-            <div className={`flex-1 bg-blue-600/90 backdrop-blur-sm rounded-xl p-2 shadow-2xl border-4 ${opponentName ? 'border-red-400 bg-red-900/40' : 'border-blue-400'} relative flex flex-col overflow-hidden`}>
-                <div className="flex flex-1 gap-0.5 sm:gap-1 overflow-x-auto items-stretch z-10 no-scrollbar">
+            <div className={`flex-1 bg-blue-600/90 backdrop-blur-sm rounded-lg p-1 shadow-2xl border-2 ${opponentName ? 'border-red-400 bg-red-900/40' : 'border-blue-400'} relative flex flex-col overflow-hidden`}>
+                <div className="flex flex-1 gap-px overflow-x-auto items-stretch z-10 no-scrollbar">
                     {strategy.map((round, idx) => {
                         const isRoundActive = currentRound === (idx + 1);
                         const isPast = currentRound && (idx + 1) < currentRound;
@@ -179,14 +179,15 @@ const BlueGameBoard = ({
                         return (
                             <div
                                 key={round.round}
-                                className={`relative flex-1 min-w-[28px] sm:min-w-[36px] md:min-w-[50px] flex flex-col items-center justify-between py-1 px-0.5 rounded-lg border
-                                    ${isRoundActive ? 'bg-yellow-500/30 border-yellow-400 ring-2 ring-yellow-400 z-20' : 'bg-blue-700/50 border-blue-500/30'}
+                                className={`relative flex-1 min-w-[32px] flex flex-col items-center justify-evenly py-0.5 px-0.5 rounded border
+                                    ${isRoundActive ? 'bg-yellow-500/30 border-yellow-400 ring-1 ring-yellow-400 z-20' : 'bg-blue-700/50 border-blue-500/30'}
                                     ${isPast ? 'opacity-50 grayscale' : ''}
                                 `}
                                 data-drop-zone="round"
                                 data-round-index={idx}
                             >
-                                <div className={`font-bold text-[8px] sm:text-[10px] md:text-xs ${isRoundActive ? 'text-yellow-300' : 'text-blue-100'}`}>
+                                {/* Round Number */}
+                                <div className={`font-bold text-[8px] leading-none shrink-0 ${isRoundActive ? 'text-yellow-300' : 'text-blue-100'}`}>
                                     R{round.round}
                                 </div>
 
@@ -198,48 +199,46 @@ const BlueGameBoard = ({
                                         }
                                     }}
                                     className={`
-                                        w-6 h-9 sm:w-8 sm:h-12 md:w-12 md:h-16 rounded flex items-center justify-center shadow-md transition-transform border select-none
+                                        w-6 h-8 rounded flex items-center justify-center shadow-md border select-none shrink-0
                                         ${getCardStyle(round.card, false, shouldHideNumber)}
                                         ${!readOnly ? 'cursor-grab active:cursor-grabbing' : ''}
                                     `}
                                 >
                                     {round.card !== -1 ? (
                                         shouldHideNumber ? (
-                                            <span className="text-xs opacity-50">?</span>
+                                            <span className="text-[10px] opacity-50">?</span>
                                         ) : (
-                                            <span className="text-sm sm:text-lg md:text-2xl font-black">{round.card}</span>
+                                            <span className="text-sm font-black">{round.card}</span>
                                         )
                                     ) : (
-                                        <span className="text-lg font-bold opacity-20"></span>
+                                        <span className="text-sm font-bold opacity-20"></span>
                                     )}
                                 </div>
 
                                 {/* Chips */}
-                                <div className="flex flex-col items-center justify-end w-full gap-0.5 mt-auto">
-                                    <div className="relative w-full flex items-center justify-center">
-                                        <div className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-600 border border-white/30 shadow-lg flex items-center justify-center z-10">
-                                            <span className="text-[8px] sm:text-[10px] md:text-xs font-black text-black leading-none">{round.chips}</span>
-                                        </div>
+                                <div className="flex flex-col items-center w-full gap-px shrink-0">
+                                    <div className="w-5 h-5 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-600 border border-white/30 shadow flex items-center justify-center">
+                                        <span className="text-[8px] font-black text-black leading-none">{round.chips}</span>
                                     </div>
 
                                     {!readOnly && onSetChips && (
-                                        <div className="flex items-center gap-0.5 bg-blue-800/60 rounded-full p-0.5 border border-blue-400/30">
+                                        <div className="flex items-center gap-px bg-blue-800/60 rounded-full p-px border border-blue-400/30">
                                             <button
                                                 onClick={() => onSetChips(idx, -1)}
-                                                className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-blue-900 text-white flex items-center justify-center text-[10px] font-bold hover:bg-blue-800"
+                                                className="w-4 h-4 rounded-full bg-blue-900 text-white flex items-center justify-center text-[9px] font-bold hover:bg-blue-800"
                                             >
                                                 -
                                             </button>
                                             <button
                                                 onClick={() => onSetChips(idx, 1)}
-                                                className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-bold hover:bg-indigo-400"
+                                                className="w-4 h-4 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[9px] font-bold hover:bg-indigo-400"
                                             >
                                                 +
                                             </button>
                                         </div>
                                     )}
                                     {readOnly && (
-                                        <div className="text-[7px] sm:text-[9px] font-bold text-yellow-300">{round.chips}억</div>
+                                        <div className="text-[7px] font-bold text-yellow-300">{round.chips}억</div>
                                     )}
                                 </div>
                             </div>
