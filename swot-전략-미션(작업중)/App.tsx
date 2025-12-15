@@ -480,8 +480,8 @@ const AdminDashboard = ({ room, onUpdate, onBack, onEnterTeam, onDelete }: { roo
                                 <div key={match.id} className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl border border-slate-300 dark:border-slate-700 overflow-hidden shadow-xl">
                                     <div className="bg-slate-100 dark:bg-slate-900/50 p-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                                         <span className="font-bold text-indigo-600 dark:text-indigo-400">MATCH {idx + 1}</span>
-                                        <span className={`text-xs font-bold px-2 py-1 rounded ${isMatchActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
-                                            {isMatchActive ? `R${match.currentRound} 진행중` : '종료됨'}
+                                        <span className={`text-xs font-bold px-2 py-1 rounded ${isMatchActive ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                            {isMatchActive ? `R${match.currentRound} 진행중` : 'Finished'}
                                         </span>
                                     </div>
                                     <div className="p-4 flex items-center justify-between gap-4">
@@ -1008,27 +1008,82 @@ const UserGameView = ({ room, teamId, onUpdate, isAdminMode, onBackToDash }: { r
                         </div>
                     </div>
 
-                    {/* Action Bar - Fixed at bottom */}
-                    <div className="h-12 sm:h-14 bg-white/95 dark:bg-slate-800/95 backdrop-blur shrink-0 flex items-center justify-between px-2 gap-2 border-t border-slate-200 dark:border-slate-700 rounded-t-lg mt-1">
-                        <button onClick={handleAIHelp} className={`flex flex-col items-center justify-center w-10 sm:w-14 h-full text-[8px] sm:text-[10px] ${aiLoading ? 'opacity-50' : ''} ${(myMatch.aiHelps?.[teamId]||0) >= 3 ? 'grayscale opacity-50' : 'text-cyan-600 dark:text-cyan-400'}`}>
-                            <span className="text-base sm:text-xl">🤖</span>
-                            <span className="hidden sm:inline">AI 헬프 ({(3 - (myMatch.aiHelps?.[teamId]||0))})</span>
-                            <span className="sm:hidden">({(3 - (myMatch.aiHelps?.[teamId]||0))})</span>
-                        </button>
-                        {isMyTurn && myMatch.roundStatus === 'DECISION' ? (
-                            <div className="flex-1 flex gap-2 h-9 sm:h-10">
-                                <button onClick={handleFold} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white rounded font-bold text-xs sm:text-sm">포기</button>
-                                <button onClick={handleCall} className="flex-[2] bg-red-600 hover:bg-red-500 text-white rounded font-bold shadow-lg shadow-red-500/30 text-xs sm:text-sm">승부 (Call)</button>
+                    {/* Action Bar or Results - Fixed at bottom */}
+                    {myMatch.roundStatus === 'FINISHED' ? (
+                        /* Game Results Section */
+                        <div className="bg-gradient-to-r from-yellow-500/20 via-amber-500/20 to-yellow-500/20 backdrop-blur shrink-0 border-t-2 border-yellow-500 rounded-t-lg mt-1 p-3">
+                            <div className="text-center mb-2">
+                                <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/50 px-3 py-1 rounded-full">🏆 경기 종료 - FINAL RESULT 🏆</span>
                             </div>
-                        ) : (
-                            <div className="flex-1 text-center text-gray-500 text-xs flex items-center justify-center bg-slate-100 dark:bg-slate-900/50 h-9 sm:h-10 rounded">{myMatch.roundStatus === 'SHOWDOWN' ? '결과 확인 대기' : '대기 중...'}</div>
-                        )}
-                    </div>
+                            <div className="flex items-center justify-between gap-2">
+                                {/* Opponent Result */}
+                                <div className={`flex-1 p-2 rounded-lg text-center ${(opponentTeam.winnings || 0) > (team.winnings || 0) ? 'bg-red-500/20 border border-red-500 ring-2 ring-red-400' : 'bg-slate-200/50 dark:bg-slate-700/50'}`}>
+                                    <div className="text-[10px] text-gray-500 dark:text-gray-400">{opponentTeam.name}</div>
+                                    <div className={`text-lg font-black ${(opponentTeam.winnings || 0) > (team.winnings || 0) ? 'text-red-600 dark:text-red-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                                        {opponentTeam.winnings || 0}억
+                                    </div>
+                                    {(opponentTeam.winnings || 0) > (team.winnings || 0) && <div className="text-[9px] text-red-500 font-bold">🥇 승리</div>}
+                                    {(opponentTeam.winnings || 0) === (team.winnings || 0) && <div className="text-[9px] text-gray-500 font-bold">무승부</div>}
+                                </div>
+
+                                <div className="text-xl font-black text-gray-400">VS</div>
+
+                                {/* My Result */}
+                                <div className={`flex-1 p-2 rounded-lg text-center ${(team.winnings || 0) > (opponentTeam.winnings || 0) ? 'bg-blue-500/20 border border-blue-500 ring-2 ring-blue-400' : 'bg-slate-200/50 dark:bg-slate-700/50'}`}>
+                                    <div className="text-[10px] text-gray-500 dark:text-gray-400">{team.name} (나)</div>
+                                    <div className={`text-lg font-black ${(team.winnings || 0) > (opponentTeam.winnings || 0) ? 'text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                                        {team.winnings || 0}억
+                                    </div>
+                                    {(team.winnings || 0) > (opponentTeam.winnings || 0) && <div className="text-[9px] text-blue-500 font-bold">🥇 승리</div>}
+                                    {(team.winnings || 0) === (opponentTeam.winnings || 0) && <div className="text-[9px] text-gray-500 font-bold">무승부</div>}
+                                </div>
+                            </div>
+                            <div className="text-center mt-2 text-[10px] text-gray-500 dark:text-gray-400">
+                                전체 {myMatch.history?.length || 0}라운드 완료
+                            </div>
+                        </div>
+                    ) : (
+                        /* Action Bar */
+                        <div className="h-12 sm:h-14 bg-white/95 dark:bg-slate-800/95 backdrop-blur shrink-0 flex items-center justify-between px-2 gap-2 border-t border-slate-200 dark:border-slate-700 rounded-t-lg mt-1">
+                            <button onClick={handleAIHelp} className={`flex flex-col items-center justify-center w-10 sm:w-14 h-full text-[8px] sm:text-[10px] ${aiLoading ? 'opacity-50' : ''} ${(myMatch.aiHelps?.[teamId]||0) >= 3 ? 'grayscale opacity-50' : 'text-cyan-600 dark:text-cyan-400'}`}>
+                                <span className="text-base sm:text-xl">🤖</span>
+                                <span className="hidden sm:inline">AI 헬프 ({(3 - (myMatch.aiHelps?.[teamId]||0))})</span>
+                                <span className="sm:hidden">({(3 - (myMatch.aiHelps?.[teamId]||0))})</span>
+                            </button>
+                            {isMyTurn && myMatch.roundStatus === 'DECISION' ? (
+                                <div className="flex-1 flex gap-2 h-9 sm:h-10">
+                                    <button onClick={handleFold} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white rounded font-bold text-xs sm:text-sm">포기</button>
+                                    <button onClick={handleCall} className="flex-[2] bg-red-600 hover:bg-red-500 text-white rounded font-bold shadow-lg shadow-red-500/30 text-xs sm:text-sm">승부 (Call)</button>
+                                </div>
+                            ) : (
+                                <div className="flex-1 text-center text-gray-500 text-xs flex items-center justify-center bg-slate-100 dark:bg-slate-900/50 h-9 sm:h-10 rounded">{myMatch.roundStatus === 'SHOWDOWN' ? '결과 확인 대기' : '대기 중...'}</div>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
             
+            {/* AI Loading Modal */}
+            {aiLoading && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.5)] animate-pulse">
+                        <div className="flex flex-col items-center gap-4">
+                            <div className="text-4xl animate-bounce">🤖</div>
+                            <div className="text-cyan-600 dark:text-cyan-400 font-bold text-lg text-center">
+                                AI헬프 작동 중<br/>잠시만 기다리세요...
+                            </div>
+                            <div className="flex gap-1">
+                                <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                                <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                                <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* AI Advice Modal (Synced) */}
-            {activeAdvice && (
+            {activeAdvice && !aiLoading && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm" onClick={closeAIHelp}>
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl max-w-md w-full border border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.3)] animate-scale-up flex flex-col max-h-[80vh]" onClick={e=>e.stopPropagation()}>
                         <h3 className="text-cyan-600 dark:text-cyan-400 font-bold text-xl mb-4 flex items-center gap-2 shrink-0">🤖 Gemini Strategy Advisor</h3>
