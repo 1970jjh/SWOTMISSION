@@ -1,17 +1,21 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Room, Team, ADMIN_PW, Match, RoundStrategy, RoundResult, CARDS, TOTAL_ROUNDS, TOTAL_CHIPS } from './types';
 import { generateSWOTAnalysis, generateWinnerPoster, getGameAdvice } from './services/geminiService';
+import { saveRoomsToFirebase, subscribeToRooms, isFirebaseConfigured } from './services/firebase';
 import MatrixBackground from './components/MatrixBackground';
 
 declare var html2pdf: any; // Declare global for CDN library
 
 // --- Helper Functions ---
+// Note: saveRooms now uses Firebase for real-time sync across devices
 const saveRooms = (rooms: Room[]) => {
-    localStorage.setItem('swot_game_rooms', JSON.stringify(rooms));
-    window.dispatchEvent(new Event('storage')); // Trigger update in other tabs
+    // Save to Firebase (async) - this will sync across all devices
+    saveRoomsToFirebase(rooms);
 };
 
+// getRooms is now only used for initial load fallback
+// Real-time updates come through subscribeToRooms
 const getRooms = (): Room[] => {
     const data = localStorage.getItem('swot_game_rooms');
     return data ? JSON.parse(data) : [];
@@ -1110,19 +1114,29 @@ const App: React.FC = () => {
     const [showNameModal, setShowNameModal] = useState(false);
 
     useEffect(() => {
-        setRooms(getRooms());
-        const handleStorage = () => setRooms(getRooms());
-        window.addEventListener('storage', handleStorage);
+        // Subscribe to real-time updates from Firebase
+        // This will sync data across all devices (PC admin + mobile users)
+        const unsubscribe = subscribeToRooms((updatedRooms) => {
+            setRooms(updatedRooms);
+        });
+
         const storedAuth = localStorage.getItem('swot_admin_auth');
         if (storedAuth === 'true') setIsAdminAuthenticated(true);
-        
+
         // Auto-reconnect check
         const session = localStorage.getItem('swot_user_session');
         if (session) {
             // Optional: You can auto-join here if you want
         }
 
-        return () => window.removeEventListener('storage', handleStorage);
+        // Show connection status
+        if (isFirebaseConfigured()) {
+            console.log('🔥 Firebase 실시간 동기화 활성화됨');
+        } else {
+            console.log('⚠️ Firebase 미설정 - localStorage 모드 (같은 브라우저에서만 동기화)');
+        }
+
+        return () => unsubscribe();
     }, []);
 
     useEffect(() => {
