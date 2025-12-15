@@ -103,31 +103,36 @@ export const getGameAdvice = async (team: Team, opponent: Team, match: Match): P
 
 export const generateWinnerPoster = async (winnerTeam: Team, base64Photos?: string[], memberNames?: string): Promise<string> => {
     const ai = getAI();
-    
-    const namesText = memberNames ? `Team Members: ${memberNames}` : "";
+
+    const memberNamesDisplay = memberNames ? memberNames : winnerTeam.members?.join(', ') || '';
+    const namesInstruction = memberNamesDisplay
+        ? `**IMPORTANT - Member Names Display**: Show the team member names "${memberNamesDisplay}" prominently on the poster, either below the team name or as individual name tags near each person.`
+        : "";
 
     if (base64Photos && base64Photos.length > 0) {
         // Use Gemini 3.0 Pro Image Preview for high quality generation with reference image
         const prompt = `
         You are a world-class movie poster designer. Create a cinematic winner poster.
-        
+
         **CORE INSTRUCTION**:
-        The user has provided reference images of people. You MUST composite the *actual faces* from these images onto the characters in the poster. 
+        The user has provided reference images of people. You MUST composite the *actual faces* from these images onto the characters in the poster.
         Maintain their facial identity and expressions as much as possible while blending them into the scene.
-        
+
         **Subject**: The winning team "${winnerTeam.name}".
         **Style**: Epic Blockbuster, Cyberpunk Gold & Neon Blue, High Contrast, Victory, Glory.
-        
+
         **Composition**:
         - Center: The team members (using the provided faces) standing triumphantly.
         - Background: A futuristic arena with falling golden confetti and spotlights.
-        - Typography: Large, bold, metallic 3D text "WINNER" at the top, and "${winnerTeam.name}" at the bottom.
-        - Overlay Text: "Total Prize: ${winnerTeam.winnings}억"
-        - ${namesText}
-        
+        - Typography at TOP: Large, bold, metallic 3D text "WINNER".
+        - Typography at CENTER-BOTTOM: Team name "${winnerTeam.name}" in large gold text.
+        - Typography BELOW team name: "Prize: ${winnerTeam.winnings}억"
+        ${namesInstruction}
+
         **Technical**:
         - Photorealistic, 8k resolution, detailed texture.
         - Lighting: Dramatic rim lighting matching the cyberpunk theme.
+        - Make sure ALL text is clearly readable.
         `;
         
         try {
@@ -166,9 +171,15 @@ export const generateWinnerPoster = async (winnerTeam: Team, base64Photos?: stri
     // Fallback if no photo or error
     const prompt = `
         Generate a high-quality victorious esports style poster for the team "${winnerTeam.name}".
-        Text to include: "${winnerTeam.name}" and "WINNER".
-        ${namesText}
-        Themes: Strategy, Success, Gold Trophy, Dark Blue Background, Neon Lights.
+
+        **Required Text to Display**:
+        - "WINNER" (large, at top)
+        - Team Name: "${winnerTeam.name}" (prominent, centered)
+        - Prize Amount: "${winnerTeam.winnings}억"
+        ${memberNamesDisplay ? `- Team Members: "${memberNamesDisplay}" (displayed below team name)` : ''}
+
+        **Style**: Strategy Game Victory, Gold Trophy, Dark Blue Background, Neon Lights, Epic Glory.
+        Make sure ALL text is clearly readable.
     `;
     
     const response = await ai.models.generateContent({
